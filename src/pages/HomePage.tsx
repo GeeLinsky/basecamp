@@ -33,7 +33,7 @@ export default function DigitalCard() {
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" className="h-8 w-8" asChild>
                   <a
-                    href="https://statix.geelinsky.com/files/Garrett_Polinsky_Resume.pdf"
+                    href="https://statix.geelinsky.com/files/Garrett%20Polinsky's%20Resume.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -91,7 +91,7 @@ export default function DigitalCard() {
           {/* Personal Information */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold">Garrett Polinsky</h1>
-            <h2 className="text-lg text-muted-foreground">Staff Software Engineer, UI/UX Lead</h2>
+            <h2 className="text-lg text-muted-foreground">Staff Software Engineer</h2>
           </div>
 
           {/* Simplified List */}
