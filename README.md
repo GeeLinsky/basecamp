@@ -1,6 +1,6 @@
-# Frontera
+# Basecamp
 
-Frontera is a modern frontend UI built with Tailwind CSS, and Shadcn/ui.
+Personal website and dashboard for geelinsky.com, built with React, Vite, Tailwind CSS, shadcn/ui, and Supabase.
 
 ## To Run
 

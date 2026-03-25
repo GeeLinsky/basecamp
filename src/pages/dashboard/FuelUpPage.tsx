@@ -69,7 +69,7 @@ interface FoodEntry {
   sort_order: number
 }
 
-interface FoodPreset {
+interface FoodFavorite {
   id: string
   label: string
   fat_g: number
@@ -120,11 +120,11 @@ export default function FuelUpPage() {
   const { user } = useAuth()
   const [selectedDate, setSelectedDate] = useState<Date>(today)
   const [entries, setEntries] = useState<FoodEntry[]>([])
-  const [presets, setPresets] = useState<FoodPreset[]>([])
+  const [favorites, setFavorites] = useState<FoodFavorite[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
-  const [presetsOpen, setPresetsOpen] = useState(false)
-  const [editingPreset, setEditingPreset] = useState<FoodPreset | null>(null)
+  const [favoritesOpen, setFavoritesOpen] = useState(false)
+  const [editingFavorite, setEditingFavorite] = useState<FoodFavorite | null>(null)
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null)
 
   const sensors = useSensors(
@@ -154,12 +154,12 @@ export default function FuelUpPage() {
   useEffect(() => {
     if (!userId) return
     supabase
-      .from("food_presets")
+      .from("food_favorites")
       .select("*")
       .eq("user_id", userId)
       .order("label", { ascending: true })
       .then(({ data }) => {
-        if (data) setPresets(data)
+        if (data) setFavorites(data)
       })
   }, [userId])
 
@@ -204,18 +204,18 @@ export default function FuelUpPage() {
     if (results.some(r => r.error)) toast.error("Failed to save order")
   }
 
-  const handleApplyPreset = async (preset: FoodPreset) => {
+  const handleApplyFavorite = async (favorite: FoodFavorite) => {
     if (!user) return
     const nextOrder = entries.length > 0 ? Math.max(...entries.map(e => e.sort_order)) + 1 : 0
     const { data, error } = await supabase
       .from("food_entries")
       .insert({
         user_id: user.id,
-        label: preset.label,
-        description: preset.description,
-        fat_g: preset.fat_g,
-        protein_g: preset.protein_g,
-        carbs_g: preset.carbs_g,
+        label: favorite.label,
+        description: favorite.description,
+        fat_g: favorite.fat_g,
+        protein_g: favorite.protein_g,
+        carbs_g: favorite.carbs_g,
         entry_date: dateStr,
         sort_order: nextOrder,
       })
@@ -226,13 +226,13 @@ export default function FuelUpPage() {
       toast.error("Failed to add entry")
     } else if (data) {
       setEntries(prev => [...prev, data])
-      toast.success(`Added "${preset.label}"`)
+      toast.success(`Added "${favorite.label}"`)
     }
   }
 
-  const handleSaveAsPreset = async (entry: FoodEntry) => {
+  const handleSaveAsFavorite = async (entry: FoodEntry) => {
     if (!user) return
-    const { error } = await supabase.from("food_presets").insert({
+    const { error } = await supabase.from("food_favorites").insert({
       user_id: user.id,
       label: entry.label,
       description: entry.description,
@@ -246,39 +246,39 @@ export default function FuelUpPage() {
     } else {
       toast.success(`"${entry.label}" saved as favorite`)
       const { data: updated } = await supabase
-        .from("food_presets")
+        .from("food_favorites")
         .select("*")
         .eq("user_id", user.id)
         .order("label", { ascending: true })
-      if (updated) setPresets(updated)
+      if (updated) setFavorites(updated)
     }
   }
 
-  const handleDeletePreset = async (id: string) => {
-    const { error } = await supabase.from("food_presets").delete().eq("id", id)
+  const handleDeleteFavorite = async (id: string) => {
+    const { error } = await supabase.from("food_favorites").delete().eq("id", id)
     if (error) {
       toast.error("Failed to delete favorite")
     } else {
-      setPresets(prev => prev.filter(p => p.id !== id))
+      setFavorites(prev => prev.filter(p => p.id !== id))
     }
   }
 
-  const handleUpdatePreset = async (
+  const handleUpdateFavorite = async (
     id: string,
     updates: { label: string; description: string | null; fat_g: number; protein_g: number; carbs_g: number },
   ) => {
-    const { error } = await supabase.from("food_presets").update(updates).eq("id", id)
+    const { error } = await supabase.from("food_favorites").update(updates).eq("id", id)
     if (error) {
       toast.error("Failed to update favorite")
     } else {
       toast.success("Favorite updated")
-      setEditingPreset(null)
+      setEditingFavorite(null)
       const { data: updated } = await supabase
-        .from("food_presets")
+        .from("food_favorites")
         .select("*")
         .eq("user_id", user!.id)
         .order("label", { ascending: true })
-      if (updated) setPresets(updated)
+      if (updated) setFavorites(updated)
     }
   }
 
@@ -373,30 +373,29 @@ export default function FuelUpPage() {
           />
         </div>
 
-        {/* Presets — collapsible section to quick-add */}
-        {presets.length > 0 && (
-          <Collapsible open={presetsOpen} onOpenChange={setPresetsOpen}>
+        {favorites.length > 0 && (
+          <Collapsible open={favoritesOpen} onOpenChange={setFavoritesOpen}>
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="sm" className="w-full justify-between">
-                <span className="text-xs text-muted-foreground">Favorites ({presets.length})</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${presetsOpen ? "rotate-180" : ""}`} />
+                <span className="text-xs text-muted-foreground">Favorites ({favorites.length})</span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${favoritesOpen ? "rotate-180" : ""}`} />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1.5 pt-2">
-              {presets.map(preset => (
-                <div key={preset.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                  <button className="flex-1 text-left min-w-0 cursor-pointer" onClick={() => handleApplyPreset(preset)}>
-                    <p className="text-sm font-medium truncate">{preset.label}</p>
-                    {preset.description && (
+              {favorites.map(favorite => (
+                <div key={favorite.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                  <button className="flex-1 text-left min-w-0 cursor-pointer" onClick={() => handleApplyFavorite(favorite)}>
+                    <p className="text-sm font-medium truncate">{favorite.label}</p>
+                    {favorite.description && (
                       <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
-                        <Linkify text={preset.description} />
+                        <Linkify text={favorite.description} />
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {Number(preset.fat_g)}f · {Number(preset.carbs_g)}c · {Number(preset.protein_g)}p
+                      {Number(favorite.fat_g)}f · {Number(favorite.carbs_g)}c · {Number(favorite.protein_g)}p
                       <span className="ml-1.5">
                         {Math.round(
-                          calcCalories(Number(preset.fat_g), Number(preset.protein_g), Number(preset.carbs_g)),
+                          calcCalories(Number(favorite.fat_g), Number(favorite.protein_g), Number(favorite.carbs_g)),
                         )}{" "}
                         cal
                       </span>
@@ -406,7 +405,7 @@ export default function FuelUpPage() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0"
-                    onClick={() => setEditingPreset(preset)}
+                    onClick={() => setEditingFavorite(favorite)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -414,7 +413,7 @@ export default function FuelUpPage() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => handleDeletePreset(preset.id)}
+                    onClick={() => handleDeleteFavorite(favorite.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -422,16 +421,15 @@ export default function FuelUpPage() {
               ))}
             </CollapsibleContent>
 
-            {/* Edit preset dialog */}
-            <Dialog open={!!editingPreset} onOpenChange={open => !open && setEditingPreset(null)}>
+            <Dialog open={!!editingFavorite} onOpenChange={open => !open && setEditingFavorite(null)}>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Edit Favorite</DialogTitle>
                 </DialogHeader>
-                {editingPreset && (
-                  <EditPresetForm
-                    preset={editingPreset}
-                    onSave={updates => handleUpdatePreset(editingPreset.id, updates)}
+                {editingFavorite && (
+                  <EditFavoriteForm
+                    favorite={editingFavorite}
+                    onSave={updates => handleUpdateFavorite(editingFavorite.id, updates)}
                   />
                 )}
               </DialogContent>
@@ -457,7 +455,7 @@ export default function FuelUpPage() {
                     key={entry.id}
                     entry={entry}
                     onEdit={() => setEditingEntry(entry)}
-                    onSaveAsPreset={() => handleSaveAsPreset(entry)}
+                    onSaveAsFavorite={() => handleSaveAsFavorite(entry)}
                     onDelete={() => handleDeleteEntry(entry.id)}
                   />
                 ))}
@@ -484,12 +482,12 @@ export default function FuelUpPage() {
 function SortableEntry({
   entry,
   onEdit,
-  onSaveAsPreset,
+  onSaveAsFavorite,
   onDelete,
 }: {
   entry: FoodEntry
   onEdit: () => void
-  onSaveAsPreset: () => void
+  onSaveAsFavorite: () => void
   onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id })
@@ -527,11 +525,13 @@ function SortableEntry({
         <div className="flex gap-1 ml-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSaveAsPreset}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSaveAsFavorite}>
                 <Star className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>Favorite</p></TooltipContent>
+            <TooltipContent>
+              <p>Favorite</p>
+            </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -539,15 +539,24 @@ function SortableEntry({
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>Edit</p></TooltipContent>
+            <TooltipContent>
+              <p>Edit</p>
+            </TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={onDelete}
+              >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent><p>Delete</p></TooltipContent>
+            <TooltipContent>
+              <p>Delete</p>
+            </TooltipContent>
           </Tooltip>
         </div>
       </CardContent>
@@ -572,11 +581,7 @@ function MacroCard({
     <Card>
       <CardContent className="p-4 text-center space-y-1">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-        {pct !== undefined && pct > 0 && (
-          <p className="text-2xl font-bold text-primary">
-            {pct}%
-          </p>
-        )}
+        {pct !== undefined && pct > 0 && <p className="text-2xl font-bold text-primary">{pct}%</p>}
         <p className="text-sm text-muted-foreground">
           {value} {unit}
           {cal !== undefined && cal > 0 && <span className="mx-1">·</span>}
@@ -709,11 +714,11 @@ function AddEntryForm({
   )
 }
 
-function EditPresetForm({
-  preset,
+function EditFavoriteForm({
+  favorite,
   onSave,
 }: {
-  preset: FoodPreset
+  favorite: FoodFavorite
   onSave: (updates: {
     label: string
     description: string | null
@@ -730,11 +735,11 @@ function EditPresetForm({
   } = useForm<FoodFormValues>({
     resolver: zodResolver(foodFormSchema),
     defaultValues: {
-      label: preset.label,
-      description: preset.description || "",
-      fat_g: Number(preset.fat_g),
-      carbs_g: Number(preset.carbs_g),
-      protein_g: Number(preset.protein_g),
+      label: favorite.label,
+      description: favorite.description || "",
+      fat_g: Number(favorite.fat_g),
+      carbs_g: Number(favorite.carbs_g),
+      protein_g: Number(favorite.protein_g),
     },
   })
 
@@ -754,23 +759,23 @@ function EditPresetForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="edit-preset-label">Name</Label>
-        <Input id="edit-preset-label" aria-invalid={!!errors.label} {...register("label")} />
+        <Label htmlFor="edit-favorite-label">Name</Label>
+        <Input id="edit-favorite-label" aria-invalid={!!errors.label} {...register("label")} />
         {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="edit-preset-description">
+        <Label htmlFor="edit-favorite-description">
           Description <span className="text-muted-foreground font-normal">(optional)</span>
         </Label>
-        <Textarea id="edit-preset-description" placeholder="e.g. Grilled, 8oz" rows={2} {...register("description")} />
+        <Textarea id="edit-favorite-description" placeholder="e.g. Grilled, 8oz" rows={2} {...register("description")} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="edit-preset-fat">Fat (g)</Label>
+          <Label htmlFor="edit-favorite-fat">Fat (g)</Label>
           <Input
-            id="edit-preset-fat"
+            id="edit-favorite-fat"
             type="number"
             min="0"
             step="0.1"
@@ -778,9 +783,9 @@ function EditPresetForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="edit-preset-carbs">Carbs (g)</Label>
+          <Label htmlFor="edit-favorite-carbs">Carbs (g)</Label>
           <Input
-            id="edit-preset-carbs"
+            id="edit-favorite-carbs"
             type="number"
             min="0"
             step="0.1"
@@ -788,9 +793,9 @@ function EditPresetForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="edit-preset-protein">Protein (g)</Label>
+          <Label htmlFor="edit-favorite-protein">Protein (g)</Label>
           <Input
-            id="edit-preset-protein"
+            id="edit-favorite-protein"
             type="number"
             min="0"
             step="0.1"
