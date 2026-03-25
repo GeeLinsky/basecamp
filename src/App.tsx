@@ -1,12 +1,16 @@
-import { Routes, Route, useLocation } from "react-router-dom"
+import { Routes, Route, useLocation, Navigate } from "react-router-dom"
 import HomePage from "./pages/HomePage"
 import PageNotFoundPage from "./pages/PageNotFoundPage"
 import { useConfigContext } from "./context/ConfigContext"
 import { useEffect } from "react"
 import { logPageView } from "./utils/analytics"
 import { initGA } from "./utils/analytics"
-import ComponentsShowcasePage from "./pages/ComponentShowcasePage"
+import ComponentsShowcasePage from "./pages/dashboard/ComponentShowcasePage"
 import { ToastContainer } from "react-toastify"
+import DashboardLayout from "./layout/DashboardLayout"
+import SettingsPage from "./pages/dashboard/SettingsPage"
+import FuelUpPage from "./pages/dashboard/FuelUpPage"
+import AuthCallbackPage from "./pages/AuthCallbackPage"
 
 const App = () => {
   const { isDark, theme } = useConfigContext()
@@ -44,8 +48,18 @@ const App = () => {
     <>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/component-showcase" element={<ComponentsShowcasePage />} />
-        <Route path="*" element={<PageNotFoundPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+        <Route path="/dashboard" element={<DashboardLayout />}>
+          <Route path="fuelup" element={<FuelUpPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="component-showcase" element={<ComponentsShowcasePage />} />
+
+          <Route index element={<Navigate to="/404" replace />} />
+        </Route>
+
+        <Route path="/404" element={<PageNotFoundPage />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
 
       <ToastContainer theme="colored" />

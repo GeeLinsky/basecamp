@@ -1,13 +1,13 @@
 import { useState } from "react"
-import { Palette, Shuffle, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
+import { Palette, Shuffle, ChevronsUpDown, ChevronUp, ChevronDown, Sun, Moon } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { useConfigContext } from "@/context/ConfigContext"
 import { CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
 import { Command } from "@/components/ui/command"
-import ColorToggle from "@/components/color/ColorToggle"
 
 const themes = [
   { value: "theme-amber-minimal", label: "Amber Minimal" },
@@ -55,8 +55,8 @@ const themes = [
   { value: "theme-violet-bloom", label: "Violet Bloom" },
 ]
 
-export default function ThemeSelector() {
-  const { setTheme, theme } = useConfigContext()
+export default function ThemeSelector({ triggerVariant = "ghost", triggerClassName }: { triggerVariant?: "ghost" | "outline"; triggerClassName?: string } = {}) {
+  const { setTheme, theme, isDark, setIsDark } = useConfigContext()
 
   const [open, setOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState(false)
@@ -89,7 +89,7 @@ export default function ThemeSelector() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger>
-        <Button variant="outline" size="icon" className="h-8 w-8">
+        <Button variant={triggerVariant} size="icon" className={triggerClassName}>
           <Palette />
         </Button>
       </PopoverTrigger>
@@ -97,6 +97,7 @@ export default function ThemeSelector() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="font-medium leading-none">Theme</h4>
+            <span className="text-xs text-muted-foreground">{themes.length} themes</span>
           </div>
           <div className="space-y-2">
             <Popover open={openDropdown} onOpenChange={setOpenDropdown}>
@@ -128,16 +129,38 @@ export default function ThemeSelector() {
               </PopoverContent>
             </Popover>
             <div className="flex gap-2 items-center justify-center">
-              <Button variant="outline" size="icon" onClick={selectPreviousTheme} aria-label="Select previous theme">
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={selectNextTheme} aria-label="Select next theme">
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={selectRandomTheme} aria-label="Select a random theme">
-                <Shuffle className="h-4 w-4" />
-              </Button>
-              <ColorToggle variant="outline" size="icon" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={selectPreviousTheme}>
+                    <ChevronUp className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Previous theme</p></TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={selectNextTheme}>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Next theme</p></TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={selectRandomTheme}>
+                    <Shuffle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>Random theme</p></TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={() => { setIsDark(!isDark) }}>
+                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent><p>{isDark ? "Light mode" : "Dark mode"}</p></TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>

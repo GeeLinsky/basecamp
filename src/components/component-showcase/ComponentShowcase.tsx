@@ -14,7 +14,6 @@ import {
   Mail,
   MessageSquare,
   Loader2,
-  Home,
 } from "lucide-react"
 import { format } from "date-fns"
 import { useState } from "react"
@@ -236,16 +235,8 @@ const ComponentShowcase = () => {
 
   return (
     <div>
-      <div className="flex flex-col items-start gap-4 md:flex-row md:justify-between md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Component Showcase</h1>
-        </div>
-        <Button asChild>
-          <Link to="/">
-            <Home className="h-4 w-4" />
-            Home
-          </Link>
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Component Showcase</h1>
       </div>
 
       <Separator className="my-6" />

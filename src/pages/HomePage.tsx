@@ -1,3 +1,7 @@
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   MapPin,
@@ -6,19 +10,36 @@ import {
   Linkedin,
   Building2,
   GraduationCap,
-  ExternalLink,
   TreePine,
   Mountain,
   Download,
+  LogOut,
+  Loader2,
+  User,
+  Flame,
+  Blocks,
+  Settings,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Separator } from "@/components/ui/separator"
+import { Link } from "react-router-dom"
 import classNames from "classnames"
 import { linkClassName } from "@/lib/utils"
 import ThemeToggle from "@/components/theme/ThemeToggle"
 import ColorToggle from "@/components/color/ColorToggle"
 import { isDesktop } from "react-device-detect"
 import { useConfigContext } from "@/context/ConfigContext"
+import { useAuth } from "@/context/AuthContext"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "react-toastify"
+
+const supabase = createClient()
 
 export default function DigitalCard() {
   const { isDark } = useConfigContext()
@@ -47,6 +68,8 @@ export default function DigitalCard() {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          <AuthPopover />
         </div>
 
         {/* Theme Buttons in Top Right */}
@@ -55,7 +78,7 @@ export default function DigitalCard() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <div>
-                  <ThemeToggle />
+                  <ThemeToggle triggerVariant="outline" triggerClassName="h-8 w-8" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -103,10 +126,9 @@ export default function DigitalCard() {
                 href="https://aliasintelligence.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={classNames("text-sm flex items-center gap-1", linkClassName)}
+                className={classNames("text-sm", linkClassName)}
               >
                 Alias Intelligence
-                <ExternalLink className="h-3 w-3" />
               </a>
             </div>
 
@@ -125,12 +147,8 @@ export default function DigitalCard() {
             {/* Email */}
             <div className="flex items-center">
               <Mail className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
-              <a
-                href="mailto:garrett@geelinsky.com"
-                className={classNames("text-sm flex items-center gap-1", linkClassName)}
-              >
+              <a href="mailto:garrett@geelinsky.com" className={classNames("text-sm", linkClassName)}>
                 garrett@geelinsky.com
-                <ExternalLink className="h-3 w-3" />
               </a>
             </div>
           </div>
@@ -145,10 +163,9 @@ export default function DigitalCard() {
                   href="https://wasatchfitz.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={classNames("text-sm flex items-center gap-1", linkClassName)}
+                  className={classNames("text-sm", linkClassName)}
                 >
                   wasatchfitz.com
-                  <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
               <div className="flex items-center">
@@ -157,10 +174,9 @@ export default function DigitalCard() {
                   href="https://boltscape.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={classNames("text-sm flex items-center gap-1", linkClassName)}
+                  className={classNames("text-sm", linkClassName)}
                 >
                   boltscape.com
-                  <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
             </div>
@@ -176,7 +192,7 @@ export default function DigitalCard() {
                       href="https://www.linkedin.com/in/garrett-polinsky"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors"
+                      className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                     >
                       <Linkedin className="h-5 w-5" />
                       <span className="sr-only">LinkedIn</span>
@@ -195,7 +211,7 @@ export default function DigitalCard() {
                       href="https://www.strava.com/athletes/gee-linsky"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors"
+                      className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -221,7 +237,7 @@ export default function DigitalCard() {
                       href="https://github.com/GeeLinsky"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors"
+                      className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                     >
                       <Github className="h-5 w-5" />
                       <span className="sr-only">GitHub</span>
@@ -237,5 +253,197 @@ export default function DigitalCard() {
         </CardContent>
       </Card>
     </main>
+  )
+}
+
+function AuthPopover() {
+  const { user, loading: authLoading, signOut, avatarUrl, avatarLoading } = useAuth()
+  const [open, setOpen] = useState(false)
+
+  if (authLoading) {
+    return (
+      <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </Button>
+    )
+  }
+
+  const displayName = user?.user_metadata?.display_name as string | undefined
+  const initials = (displayName || user?.email || "?").charAt(0).toUpperCase()
+
+  const trigger = user ? (
+    avatarLoading ? (
+      <div className="h-8 w-8 flex items-center justify-center">
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+    ) : (
+      <button className="h-8 w-8 rounded-full overflow-hidden border-2 border-border hover:border-primary transition-colors cursor-pointer">
+        <Avatar className="h-full w-full">
+          {avatarUrl ? (
+            <AvatarImage src={avatarUrl} alt={displayName} />
+          ) : (
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          )}
+        </Avatar>
+      </button>
+    )
+  ) : (
+    <Button variant="outline" size="icon" className="h-8 w-8">
+      <User className="h-4 w-4" />
+    </Button>
+  )
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      {!user ? (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Sign In</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ) : (
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      )}
+
+      <PopoverContent align="start" className="w-72">
+        {user ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              {avatarLoading ? (
+                <Skeleton className="h-10 w-10 rounded-full" />
+              ) : (
+                <Avatar className="h-10 w-10">
+                  {avatarUrl ? (
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                  ) : (
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  )}
+                </Avatar>
+              )}
+              <div className="text-sm min-w-0">
+                <p className="font-medium truncate">{displayName || "User"}</p>
+                <p className="text-muted-foreground text-xs truncate">{user.email}</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-1">
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/fuelup">
+                  <Flame className="h-4 w-4 mr-2" />
+                  FuelUp
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/component-showcase">
+                  <Blocks className="h-4 w-4 mr-2" />
+                  Component Showcase
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/settings">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </Link>
+              </Button>
+            </div>
+
+            <Separator />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              onClick={async () => {
+                await signOut()
+                setOpen(false)
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <div className="text-center mb-3">
+              <p className="text-sm font-medium">Welcome</p>
+              <p className="text-xs text-muted-foreground">Sign in to continue</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Need an account? Send an email to{" "}
+                <a href="mailto:garrett@geelinsky.com" className="underline hover:text-foreground transition-colors">
+                  garrett@geelinsky.com
+                </a>
+              </p>
+            </div>
+
+            <SignInForm onSuccess={() => setOpen(false)} />
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+const signInSchema = z.object({
+  email: z.string().email("Invalid email"),
+  password: z.string().min(1, "Password is required"),
+})
+
+type SignInValues = z.infer<typeof signInSchema>
+
+function SignInForm({ onSuccess }: { onSuccess: () => void }) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SignInValues>({
+    resolver: zodResolver(signInSchema),
+  })
+
+  const onSubmit = async (values: SignInValues) => {
+    const { error } = await supabase.auth.signInWithPassword(values)
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      onSuccess()
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="sign-in-email">Email</Label>
+        <Input
+          id="sign-in-email"
+          type="email"
+          placeholder="you@example.com"
+          aria-invalid={!!errors.email}
+          {...register("email")}
+        />
+        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="sign-in-password">Password</Label>
+        <Input
+          id="sign-in-password"
+          type="password"
+          placeholder="••••••••"
+          aria-invalid={!!errors.password}
+          {...register("password")}
+        />
+        {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+      </div>
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+        Sign In
+      </Button>
+    </form>
   )
 }
