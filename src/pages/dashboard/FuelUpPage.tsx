@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
+import { useQueryState, parseAsString } from "nuqs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useAuth } from "@/context/AuthContext"
-import { createClient } from "@/lib/supabase/client"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,6 @@ import {
   GripVertical,
   CalendarIcon,
 } from "lucide-react"
-import { toast } from "react-toastify"
 import {
   DndContext,
   closestCenter,
@@ -44,8 +43,20 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-
-const supabase = createClient()
+import {
+  useFoodEntries,
+  useFoodFavorites,
+  useAddEntry,
+  useUpdateEntry,
+  useDeleteEntry,
+  useReorderEntries,
+  useApplyFavorite,
+  useSaveAsFavorite,
+  useDeleteFavorite,
+  useUpdateFavorite,
+  type FoodEntry,
+  type FoodFavorite,
+} from "@/hooks/use-fuelup"
 
 const foodFormSchema = z.object({
   label: z.string().min(1, "Food name is required"),
@@ -56,27 +67,6 @@ const foodFormSchema = z.object({
 })
 
 type FoodFormValues = z.infer<typeof foodFormSchema>
-
-interface FoodEntry {
-  id: string
-  user_id: string
-  label: string
-  fat_g: number
-  protein_g: number
-  carbs_g: number
-  description: string | null
-  entry_date: string
-  sort_order: number
-}
-
-interface FoodFavorite {
-  id: string
-  label: string
-  fat_g: number
-  protein_g: number
-  carbs_g: number
-  description: string | null
-}
 
 function Linkify({ text }: { text: string }) {
   const urlRegex = /(https?:\/\/[^\s]+)/g
@@ -114,14 +104,19 @@ function formatDate(date: Date) {
   return `${y}-${m}-${d}`
 }
 
-const today = new Date()
-
 export default function FuelUpPage() {
   const { user } = useAuth()
-  const [selectedDate, setSelectedDate] = useState<Date>(today)
-  const [entries, setEntries] = useState<FoodEntry[]>([])
-  const [favorites, setFavorites] = useState<FoodFavorite[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dateParam, setDateParam] = useQueryState("date", parseAsString.withDefault(formatDate(new Date())))
+  const selectedDate = useMemo(() => {
+    const [y, m, d] = dateParam.split("-").map(Number)
+    const parsed = new Date(y, m - 1, d)
+    return isNaN(parsed.getTime()) ? new Date() : parsed
+  }, [dateParam])
+  const setSelectedDate = (date: Date) => {
+    const str = formatDate(date)
+    setDateParam(str === formatDate(new Date()) ? null : str)
+  }
+
   const [addOpen, setAddOpen] = useState(false)
   const [favoritesOpen, setFavoritesOpen] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState<FoodFavorite | null>(null)
@@ -132,61 +127,21 @@ export default function FuelUpPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const dateStr = formatDate(selectedDate)
-
+  const dateStr = dateParam
   const userId = user?.id
 
-  useEffect(() => {
-    if (!userId) return
-    setLoading(true)
-    supabase
-      .from("food_entries")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("entry_date", dateStr)
-      .order("sort_order", { ascending: true })
-      .then(({ data }) => {
-        if (data) setEntries(data)
-        setLoading(false)
-      })
-  }, [userId, dateStr])
+  const { data: entries = [], isLoading } = useFoodEntries(userId, dateStr)
+  const { data: favorites = [] } = useFoodFavorites(userId)
 
-  useEffect(() => {
-    if (!userId) return
-    supabase
-      .from("food_favorites")
-      .select("*")
-      .eq("user_id", userId)
-      .order("label", { ascending: true })
-      .then(({ data }) => {
-        if (data) setFavorites(data)
-      })
-  }, [userId])
+  const deleteEntry = useDeleteEntry(userId ?? "", dateStr)
+  const updateEntry = useUpdateEntry(userId ?? "", dateStr)
+  const reorderEntries = useReorderEntries(userId ?? "", dateStr)
+  const applyFavorite = useApplyFavorite(userId ?? "", dateStr)
+  const saveAsFavorite = useSaveAsFavorite(userId ?? "")
+  const deleteFavorite = useDeleteFavorite(userId ?? "")
+  const updateFavorite = useUpdateFavorite(userId ?? "")
 
-  const handleDeleteEntry = async (id: string) => {
-    const { error } = await supabase.from("food_entries").delete().eq("id", id)
-    if (error) {
-      toast.error("Failed to delete entry")
-    } else {
-      setEntries(prev => prev.filter(e => e.id !== id))
-    }
-  }
-
-  const handleUpdateEntry = async (
-    id: string,
-    updates: { label: string; description: string | null; fat_g: number; protein_g: number; carbs_g: number },
-  ) => {
-    const { data, error } = await supabase.from("food_entries").update(updates).eq("id", id).select().single()
-    if (error) {
-      toast.error("Failed to update entry")
-    } else if (data) {
-      setEntries(prev => prev.map(e => (e.id === id ? { ...e, ...data } : e)))
-      toast.success("Entry updated")
-      setEditingEntry(null)
-    }
-  }
-
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
@@ -194,92 +149,12 @@ export default function FuelUpPage() {
     const newIndex = entries.findIndex(e => e.id === over.id)
     const reordered = arrayMove(entries, oldIndex, newIndex)
 
-    setEntries(reordered)
-
-    const promises = reordered.map((entry, i) =>
-      supabase.from("food_entries").update({ sort_order: i }).eq("id", entry.id),
-    )
-
-    const results = await Promise.all(promises)
-    if (results.some(r => r.error)) toast.error("Failed to save order")
+    reorderEntries.mutate(reordered)
   }
 
-  const handleApplyFavorite = async (favorite: FoodFavorite) => {
-    if (!user) return
+  const handleApplyFavorite = (favorite: FoodFavorite) => {
     const nextOrder = entries.length > 0 ? Math.max(...entries.map(e => e.sort_order)) + 1 : 0
-    const { data, error } = await supabase
-      .from("food_entries")
-      .insert({
-        user_id: user.id,
-        label: favorite.label,
-        description: favorite.description,
-        fat_g: favorite.fat_g,
-        protein_g: favorite.protein_g,
-        carbs_g: favorite.carbs_g,
-        entry_date: dateStr,
-        sort_order: nextOrder,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      toast.error("Failed to add entry")
-    } else if (data) {
-      setEntries(prev => [...prev, data])
-      toast.success(`Added "${favorite.label}"`)
-    }
-  }
-
-  const handleSaveAsFavorite = async (entry: FoodEntry) => {
-    if (!user) return
-    const { error } = await supabase.from("food_favorites").insert({
-      user_id: user.id,
-      label: entry.label,
-      description: entry.description,
-      fat_g: entry.fat_g,
-      protein_g: entry.protein_g,
-      carbs_g: entry.carbs_g,
-    })
-
-    if (error) {
-      toast.error("Failed to save favorite")
-    } else {
-      toast.success(`"${entry.label}" saved as favorite`)
-      const { data: updated } = await supabase
-        .from("food_favorites")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("label", { ascending: true })
-      if (updated) setFavorites(updated)
-    }
-  }
-
-  const handleDeleteFavorite = async (id: string) => {
-    const { error } = await supabase.from("food_favorites").delete().eq("id", id)
-    if (error) {
-      toast.error("Failed to delete favorite")
-    } else {
-      setFavorites(prev => prev.filter(p => p.id !== id))
-    }
-  }
-
-  const handleUpdateFavorite = async (
-    id: string,
-    updates: { label: string; description: string | null; fat_g: number; protein_g: number; carbs_g: number },
-  ) => {
-    const { error } = await supabase.from("food_favorites").update(updates).eq("id", id)
-    if (error) {
-      toast.error("Failed to update favorite")
-    } else {
-      toast.success("Favorite updated")
-      setEditingFavorite(null)
-      const { data: updated } = await supabase
-        .from("food_favorites")
-        .select("*")
-        .eq("user_id", user!.id)
-        .order("label", { ascending: true })
-      if (updated) setFavorites(updated)
-    }
+    applyFavorite.mutate({ favorite, nextOrder })
   }
 
   if (!user) return null
@@ -294,7 +169,8 @@ export default function FuelUpPage() {
   )
   const totalCalories = calcCalories(totals.fat, totals.protein, totals.carbs)
 
-  const isToday = dateStr === formatDate(new Date())
+  const todayStr = formatDate(new Date())
+  const isToday = dateStr === todayStr
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -338,10 +214,7 @@ export default function FuelUpPage() {
               <AddEntryForm
                 userId={user.id}
                 date={dateStr}
-                onAdded={entry => {
-                  setEntries(prev => [...prev, entry])
-                  setAddOpen(false)
-                }}
+                onAdded={() => setAddOpen(false)}
               />
             </DialogContent>
           </Dialog>
@@ -413,7 +286,7 @@ export default function FuelUpPage() {
                     variant="ghost"
                     size="icon"
                     className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteFavorite(favorite.id)}
+                    onClick={() => deleteFavorite.mutate(favorite.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -429,7 +302,12 @@ export default function FuelUpPage() {
                 {editingFavorite && (
                   <EditFavoriteForm
                     favorite={editingFavorite}
-                    onSave={updates => handleUpdateFavorite(editingFavorite.id, updates)}
+                    onSave={updates => {
+                      updateFavorite.mutate(
+                        { id: editingFavorite.id, updates },
+                        { onSuccess: () => setEditingFavorite(null) },
+                      )
+                    }}
                   />
                 )}
               </DialogContent>
@@ -440,7 +318,7 @@ export default function FuelUpPage() {
         <Separator />
 
         {/* Entries list */}
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
@@ -455,8 +333,8 @@ export default function FuelUpPage() {
                     key={entry.id}
                     entry={entry}
                     onEdit={() => setEditingEntry(entry)}
-                    onSaveAsFavorite={() => handleSaveAsFavorite(entry)}
-                    onDelete={() => handleDeleteEntry(entry.id)}
+                    onSaveAsFavorite={() => saveAsFavorite.mutate(entry)}
+                    onDelete={() => deleteEntry.mutate(entry.id)}
                   />
                 ))}
               </div>
@@ -470,7 +348,15 @@ export default function FuelUpPage() {
               <DialogTitle>Edit Entry</DialogTitle>
             </DialogHeader>
             {editingEntry && (
-              <EditEntryForm entry={editingEntry} onSave={updates => handleUpdateEntry(editingEntry.id, updates)} />
+              <EditEntryForm
+                entry={editingEntry}
+                onSave={updates => {
+                  updateEntry.mutate(
+                    { id: editingEntry.id, updates },
+                    { onSuccess: () => setEditingEntry(null) },
+                  )
+                }}
+              />
             )}
           </DialogContent>
         </Dialog>
@@ -599,13 +485,15 @@ function AddEntryForm({
 }: {
   userId: string
   date: string
-  onAdded: (entry: FoodEntry) => void
+  onAdded: () => void
 }) {
+  const addEntry = useAddEntry(userId, date)
+
   const {
     register,
     handleSubmit,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FoodFormValues>({
     resolver: zodResolver(foodFormSchema),
     defaultValues: { label: "", description: "", fat_g: 0, carbs_g: 0, protein_g: 0 },
@@ -614,27 +502,17 @@ function AddEntryForm({
   const [fat, carbs, protein] = watch(["fat_g", "carbs_g", "protein_g"])
   const previewCal = calcCalories(fat, protein, carbs)
 
-  const onSubmit = async (values: FoodFormValues) => {
-    const { data, error } = await supabase
-      .from("food_entries")
-      .insert({
-        user_id: userId,
+  const onSubmit = (values: FoodFormValues) => {
+    addEntry.mutate(
+      {
         label: values.label.trim(),
         description: values.description?.trim() || null,
         fat_g: values.fat_g,
         protein_g: values.protein_g,
         carbs_g: values.carbs_g,
-        entry_date: date,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      toast.error("Failed to add entry")
-    } else if (data) {
-      onAdded(data)
-      toast.success("Entry added")
-    }
+      },
+      { onSuccess: onAdded },
+    )
   }
 
   return (
@@ -706,8 +584,8 @@ function AddEntryForm({
         </a>
       </p>
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+      <Button type="submit" className="w-full" disabled={addEntry.isPending}>
+        {addEntry.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
         Add Entry
       </Button>
     </form>
