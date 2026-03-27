@@ -6,9 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7"
 import { ConfigProvider } from "./context/ConfigContext.tsx"
 import { AuthProvider } from "./context/AuthContext.tsx"
-import { registerSW } from "virtual:pwa-register"
-
-registerSW({ immediate: true })
 
 const queryClient = new QueryClient()
 
