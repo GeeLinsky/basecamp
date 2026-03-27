@@ -23,6 +23,7 @@ export interface FoodFavorite {
   protein_g: number
   carbs_g: number
   description: string | null
+  sort_order: number
 }
 
 interface FoodMutationPayload {
@@ -68,7 +69,7 @@ export function useFoodFavorites(userId: string | undefined) {
         .from("food_favorites")
         .select("*")
         .eq("user_id", userId!)
-        .order("label", { ascending: true })
+        .order("sort_order", { ascending: true })
       if (error) throw error
       return data as FoodFavorite[]
     },
@@ -200,7 +201,7 @@ export function useSaveAsFavorite(userId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (entry: FoodEntry) => {
+    mutationFn: async ({ entry, nextOrder }: { entry: FoodEntry; nextOrder: number }) => {
       const { error } = await supabase.from("food_favorites").insert({
         user_id: userId,
         label: entry.label,
@@ -208,10 +209,11 @@ export function useSaveAsFavorite(userId: string) {
         fat_g: entry.fat_g,
         protein_g: entry.protein_g,
         carbs_g: entry.carbs_g,
+        sort_order: nextOrder,
       })
       if (error) throw error
     },
-    onSuccess: (_, entry) => {
+    onSuccess: (_, { entry }) => {
       queryClient.invalidateQueries({ queryKey: favoriteKeys.byUser(userId) })
       toast.success(`"${entry.label}" saved as favorite`)
     },
@@ -232,6 +234,33 @@ export function useDeleteFavorite(userId: string) {
       toast.success("Favorite deleted")
     },
     onError: () => toast.error("Failed to delete favorite"),
+  })
+}
+
+export function useReorderFavorites(userId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (reordered: FoodFavorite[]) => {
+      const promises = reordered.map((fav, i) =>
+        supabase.from("food_favorites").update({ sort_order: i }).eq("id", fav.id),
+      )
+      const results = await Promise.all(promises)
+      if (results.some(r => r.error)) throw new Error("Failed to save order")
+      return reordered
+    },
+    onMutate: async (reordered) => {
+      await queryClient.cancelQueries({ queryKey: favoriteKeys.byUser(userId) })
+      const previous = queryClient.getQueryData<FoodFavorite[]>(favoriteKeys.byUser(userId))
+      queryClient.setQueryData(favoriteKeys.byUser(userId), reordered)
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(favoriteKeys.byUser(userId), context.previous)
+      }
+      toast.error("Failed to save order")
+    },
   })
 }
 

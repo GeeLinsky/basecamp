@@ -69,6 +69,7 @@ import {
   useApplyFavorite,
   useSaveAsFavorite,
   useDeleteFavorite,
+  useReorderFavorites,
   useUpdateFavorite,
   type FoodEntry,
   type FoodFavorite,
@@ -238,6 +239,7 @@ export default function FuelUpPage() {
   const applyFavorite = useApplyFavorite(userId ?? "", dateStr)
   const saveAsFavorite = useSaveAsFavorite(userId ?? "")
   const deleteFavorite = useDeleteFavorite(userId ?? "")
+  const reorderFavorites = useReorderFavorites(userId ?? "")
   const updateFavorite = useUpdateFavorite(userId ?? "")
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -254,6 +256,17 @@ export default function FuelUpPage() {
   const handleApplyFavorite = (favorite: FoodFavorite) => {
     const nextOrder = entries.length > 0 ? Math.max(...entries.map(e => e.sort_order)) + 1 : 0
     applyFavorite.mutate({ favorite, nextOrder })
+  }
+
+  const handleFavoriteDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = favorites.findIndex(f => f.id === active.id)
+    const newIndex = favorites.findIndex(f => f.id === over.id)
+    const reordered = arrayMove(favorites, oldIndex, newIndex)
+
+    reorderFavorites.mutate(reordered)
   }
 
   if (!user) return null
@@ -436,72 +449,19 @@ export default function FuelUpPage() {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1.5 pt-2">
-              {favorites.map(favorite => (
-                <div key={favorite.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                  <div className="flex-1 min-w-0">
-                    <FoodItemContent item={favorite} />
-                  </div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 cursor-pointer text-emerald-600 hover:text-emerald-700"
-                        onClick={() => handleApplyFavorite(favorite)}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Add</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0 cursor-pointer text-blue-500 hover:text-blue-600"
-                        onClick={() => setEditingFavorite(favorite)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit</TooltipContent>
-                  </Tooltip>
-                  <AlertDialog>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0 text-destructive hover:text-destructive cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete</TooltipContent>
-                    </Tooltip>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete favorite?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently remove "{favorite.label}" from your favorites.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={() => deleteFavorite.mutate(favorite.id)}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFavoriteDragEnd}>
+                <SortableContext items={favorites.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                  {favorites.map(favorite => (
+                    <SortableFavorite
+                      key={favorite.id}
+                      favorite={favorite}
+                      onApply={() => handleApplyFavorite(favorite)}
+                      onEdit={() => setEditingFavorite(favorite)}
+                      onDelete={() => deleteFavorite.mutate(favorite.id)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </CollapsibleContent>
 
             <Dialog open={!!editingFavorite} onOpenChange={open => !open && setEditingFavorite(null)}>
@@ -543,7 +503,10 @@ export default function FuelUpPage() {
                     key={entry.id}
                     entry={entry}
                     onEdit={() => setEditingEntry(entry)}
-                    onSaveAsFavorite={() => saveAsFavorite.mutate(entry)}
+                    onSaveAsFavorite={() => {
+                      const nextOrder = favorites.length > 0 ? Math.max(...favorites.map(f => f.sort_order)) + 1 : 0
+                      saveAsFavorite.mutate({ entry, nextOrder })
+                    }}
                     onDelete={() => deleteEntry.mutate(entry.id)}
                   />
                 ))}
@@ -674,6 +637,100 @@ function SortableEntry({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function SortableFavorite({
+  favorite,
+  onApply,
+  onEdit,
+  onDelete,
+}: {
+  favorite: FoodFavorite
+  onApply: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: favorite.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 rounded-md border px-3 py-2">
+      <button
+        className="cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 text-muted-foreground hover:text-foreground"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="flex-1 min-w-0">
+        <FoodItemContent item={favorite} />
+      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 cursor-pointer text-emerald-600 hover:text-emerald-700"
+            onClick={onApply}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Add</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 cursor-pointer text-blue-500 hover:text-blue-600"
+            onClick={onEdit}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Edit</TooltipContent>
+      </Tooltip>
+      <AlertDialog>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-destructive hover:text-destructive cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Delete</TooltipContent>
+        </Tooltip>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete favorite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove "{favorite.label}" from your favorites.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   )
 }
 
