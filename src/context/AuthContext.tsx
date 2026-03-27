@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import type { User, Session } from "@supabase/supabase-js"
-import { toast } from "react-toastify"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()

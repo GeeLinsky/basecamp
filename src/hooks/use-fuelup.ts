@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "react-toastify"
+import { toast } from "sonner"
 
 const supabase = createClient()
 
@@ -133,6 +133,7 @@ export function useDeleteEntry(userId: string, dateStr: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: entryKeys.byDate(userId, dateStr) })
+      toast.success("Entry deleted")
     },
     onError: () => toast.error("Failed to delete entry"),
   })
@@ -228,6 +229,7 @@ export function useDeleteFavorite(userId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: favoriteKeys.byUser(userId) })
+      toast.success("Favorite deleted")
     },
     onError: () => toast.error("Failed to delete favorite"),
   })

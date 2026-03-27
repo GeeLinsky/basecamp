@@ -22,10 +22,10 @@ Personal website and dashboard for Garrett Polinsky (geelinsky.com).
 
 ## Key Patterns
 
-- Display name is stored on `auth.users` user_metadata, not in the profiles table
+- Username (display name) is stored on `auth.users` user_metadata, not in the profiles table
 - Avatar path is stored in `profiles.avatar_path`, served via signed URLs (private bucket)
 - Use `createClient()` from `@/lib/supabase/client` for all Supabase queries
-- Use `react-toastify` for all toast notifications
+- Use `sonner` for all toast notifications
 - Macro display order: fat, carbs, protein
 - All interactive UI elements should have `cursor-pointer`
 - Dates should use local time formatting, never `toISOString()` for date strings

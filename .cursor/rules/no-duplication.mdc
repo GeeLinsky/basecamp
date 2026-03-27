@@ -1,0 +1,32 @@
+---
+description: Avoid code duplication — extract shared components, hooks, and utilities
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# No Duplication
+
+When writing or modifying code, actively look for duplication and extract shared abstractions.
+
+## What to extract
+
+- **Repeated JSX blocks** (2+ places) → shared component with props for differences
+- **Repeated derived state** (e.g. computing display name from user metadata) → custom hook
+- **Repeated logic** (e.g. validation, formatting) → utility function in `src/utils/`
+- **Repeated data objects** (e.g. building form defaults from an entity) → helper function
+
+## Where shared code lives
+
+- Components: `src/components/` (e.g. `UserAvatar.tsx`, `AccountMenuContent.tsx`)
+- Hooks: `src/hooks/` (e.g. `use-user-display.ts`)
+- Utilities: `src/utils/` (e.g. `validate-image.ts`)
+
+## Before creating a new component, hook, or inline block
+
+1. Search for existing abstractions that already handle the pattern
+2. If a similar block exists elsewhere, extract a shared version instead of duplicating
+3. Use props, arguments, or generics to handle differences between call sites
+
+## When modifying existing code
+
+If you notice duplication while editing a file — even if it's not part of the current task — flag it or fix it.

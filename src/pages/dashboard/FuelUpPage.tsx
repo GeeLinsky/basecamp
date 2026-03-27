@@ -13,19 +13,21 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  Loader2,
-  Plus,
-  Trash2,
-  Star,
-  ChevronDown,
-  Pencil,
-  ExternalLink,
-  GripVertical,
-  CalendarIcon,
-} from "lucide-react"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Loader2, Plus, Trash2, Star, ChevronDown, Pencil, GripVertical, CalendarIcon, Info } from "lucide-react"
 import {
   DndContext,
   closestCenter,
@@ -61,12 +63,28 @@ import {
 const foodFormSchema = z.object({
   label: z.string().min(1, "Food name is required"),
   description: z.string().optional(),
-  fat_g: z.number().min(0, "Must be 0 or more"),
-  carbs_g: z.number().min(0, "Must be 0 or more"),
-  protein_g: z.number().min(0, "Must be 0 or more"),
+  fat_g: z.number({ error: "Required" }).min(0, "Must be 0 or more"),
+  carbs_g: z.number({ error: "Required" }).min(0, "Must be 0 or more"),
+  protein_g: z.number({ error: "Required" }).min(0, "Must be 0 or more"),
 })
 
 type FoodFormValues = z.infer<typeof foodFormSchema>
+
+interface MacroFields {
+  fat_g: number
+  carbs_g: number
+  protein_g: number
+}
+
+function toFormValues(item: FoodEntry | FoodFavorite): FoodFormValues {
+  return {
+    label: item.label,
+    description: item.description || "",
+    fat_g: Number(item.fat_g),
+    carbs_g: Number(item.carbs_g),
+    protein_g: Number(item.protein_g),
+  }
+}
 
 function Linkify({ text }: { text: string }) {
   const urlRegex = /(https?:\/\/[^\s]+)/g
@@ -104,6 +122,68 @@ function formatDate(date: Date) {
   return `${y}-${m}-${d}`
 }
 
+function ItemDescription({ text }: { text: string }) {
+  return (
+    <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
+      <Linkify text={text} />
+    </p>
+  )
+}
+
+function FoodItemContent({ item }: { item: FoodEntry | FoodFavorite }) {
+  return (
+    <div className="space-y-2">
+      <p className="font-medium text-sm break-words">{item.label}</p>
+      <MacroSummary fat_g={item.fat_g} carbs_g={item.carbs_g} protein_g={item.protein_g} />
+      {item.description && <ItemDescription text={item.description} />}
+    </div>
+  )
+}
+
+function MacroSummary({ fat_g, carbs_g, protein_g }: MacroFields) {
+  const fat = Number(fat_g)
+  const carbs = Number(carbs_g)
+  const protein = Number(protein_g)
+  const totalCal = calcCalories(fat, protein, carbs)
+  const fatCal = fat * 9
+  const carbsCal = carbs * 4
+  const proteinCal = protein * 4
+
+  return (
+    <div className="text-xs text-muted-foreground space-y-1">
+      <p>
+        {fat}f · {carbs}c · {protein}p<span className="ml-2 font-medium">{Math.round(totalCal)} cal</span>
+      </p>
+      {totalCal > 0 && (
+        <HoverCard openDelay={100} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <button className="inline-flex items-center gap-1 cursor-pointer text-muted-foreground/70 hover:text-muted-foreground text-[11px]">
+              <Info className="h-3 w-3" />
+              Macro breakdown
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent side="top" align="start" className="w-auto text-xs tabular-nums p-3">
+            <div className="space-y-1">
+              <p>
+                <span className="font-medium">{Math.round((fatCal / totalCal) * 100)}%</span> fat ({Math.round(fatCal)}{" "}
+                cal)
+              </p>
+              <p>
+                <span className="font-medium">{Math.round((carbsCal / totalCal) * 100)}%</span> carbs (
+                {Math.round(carbsCal)} cal)
+              </p>
+              <p>
+                <span className="font-medium">{Math.round((proteinCal / totalCal) * 100)}%</span> protein (
+                {Math.round(proteinCal)} cal)
+              </p>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      )}
+    </div>
+  )
+}
+
 export default function FuelUpPage() {
   const { user } = useAuth()
   const [dateParam, setDateParam] = useQueryState("date", parseAsString.withDefault(formatDate(new Date())))
@@ -119,6 +199,7 @@ export default function FuelUpPage() {
 
   const [addOpen, setAddOpen] = useState(false)
   const [favoritesOpen, setFavoritesOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState<FoodFavorite | null>(null)
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null)
 
@@ -133,6 +214,7 @@ export default function FuelUpPage() {
   const { data: entries = [], isLoading } = useFoodEntries(userId, dateStr)
   const { data: favorites = [] } = useFoodFavorites(userId)
 
+  const addEntry = useAddEntry(userId ?? "", dateStr)
   const deleteEntry = useDeleteEntry(userId ?? "", dateStr)
   const updateEntry = useUpdateEntry(userId ?? "", dateStr)
   const reorderEntries = useReorderEntries(userId ?? "", dateStr)
@@ -179,27 +261,52 @@ export default function FuelUpPage() {
         <p className="text-muted-foreground text-sm mt-1">Track your daily macros.</p>
       </div>
 
-      <div className="space-y-4">
-        {/* Date picker + add button */}
+      <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="cursor-pointer">
-                <CalendarIcon className="h-4 w-4 mr-2" />
-                {isToday
-                  ? "Today"
-                  : selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          <div className="flex items-center gap-2">
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="cursor-pointer">
+                  <CalendarIcon className="h-4 w-4 mr-1.5" />
+                  {isToday
+                    ? "Today"
+                    : selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={date => {
+                    if (date) {
+                      setSelectedDate(date)
+                      setCalendarOpen(false)
+                      setFavoritesOpen(false)
+                    }
+                  }}
+                  disabled={{ after: new Date() }}
+                />
+              </PopoverContent>
+            </Popover>
+            {!isToday && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                onClick={() => {
+                  setSelectedDate(new Date())
+                  setFavoritesOpen(false)
+                }}
+              >
+                Today
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={date => date && setSelectedDate(date)}
-                disabled={{ after: new Date() }}
-              />
-            </PopoverContent>
-          </Popover>
+            )}
+            {totalCalories > 0 && (
+              <span className="text-sm text-muted-foreground font-medium tabular-nums">
+                {Math.round(totalCalories)} cal
+              </span>
+            )}
+          </div>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -211,18 +318,19 @@ export default function FuelUpPage() {
               <DialogHeader>
                 <DialogTitle>Add Food Entry</DialogTitle>
               </DialogHeader>
-              <AddEntryForm
-                userId={user.id}
-                date={dateStr}
-                onAdded={() => setAddOpen(false)}
+              <FoodForm
+                onSubmit={values => {
+                  const nextOrder = entries.length > 0 ? Math.max(...entries.map(e => e.sort_order)) + 1 : 0
+                  addEntry.mutate({ ...values, sort_order: nextOrder }, { onSuccess: () => setAddOpen(false) })
+                }}
+                submitLabel="Add Entry"
+                isPending={addEntry.isPending}
               />
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Totals */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <MacroCard label="Calories" value={Math.round(totalCalories)} unit="cal" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MacroCard
             label="Fat"
             value={Math.round(totals.fat)}
@@ -257,39 +365,53 @@ export default function FuelUpPage() {
             <CollapsibleContent className="space-y-1.5 pt-2">
               {favorites.map(favorite => (
                 <div key={favorite.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                  <button className="flex-1 text-left min-w-0 cursor-pointer" onClick={() => handleApplyFavorite(favorite)}>
-                    <p className="text-sm font-medium truncate">{favorite.label}</p>
-                    {favorite.description && (
-                      <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
-                        <Linkify text={favorite.description} />
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {Number(favorite.fat_g)}f · {Number(favorite.carbs_g)}c · {Number(favorite.protein_g)}p
-                      <span className="ml-1.5">
-                        {Math.round(
-                          calcCalories(Number(favorite.fat_g), Number(favorite.protein_g), Number(favorite.carbs_g)),
-                        )}{" "}
-                        cal
-                      </span>
-                    </p>
-                  </button>
+                  <div className="flex-1 min-w-0">
+                    <FoodItemContent item={favorite} />
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 shrink-0"
+                    className="h-7 w-7 shrink-0 cursor-pointer text-emerald-600 hover:text-emerald-700"
+                    onClick={() => handleApplyFavorite(favorite)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 cursor-pointer text-blue-500 hover:text-blue-600"
                     onClick={() => setEditingFavorite(favorite)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => deleteFavorite.mutate(favorite.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-destructive hover:text-destructive cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete favorite?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently remove "{favorite.label}" from your favorites.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => deleteFavorite.mutate(favorite.id)}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               ))}
             </CollapsibleContent>
@@ -300,14 +422,15 @@ export default function FuelUpPage() {
                   <DialogTitle>Edit Favorite</DialogTitle>
                 </DialogHeader>
                 {editingFavorite && (
-                  <EditFavoriteForm
-                    favorite={editingFavorite}
-                    onSave={updates => {
+                  <FoodForm
+                    defaultValues={toFormValues(editingFavorite)}
+                    onSubmit={updates => {
                       updateFavorite.mutate(
                         { id: editingFavorite.id, updates },
                         { onSuccess: () => setEditingFavorite(null) },
                       )
                     }}
+                    submitLabel="Save Changes"
                   />
                 )}
               </DialogContent>
@@ -317,7 +440,6 @@ export default function FuelUpPage() {
 
         <Separator />
 
-        {/* Entries list */}
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -348,14 +470,12 @@ export default function FuelUpPage() {
               <DialogTitle>Edit Entry</DialogTitle>
             </DialogHeader>
             {editingEntry && (
-              <EditEntryForm
-                entry={editingEntry}
-                onSave={updates => {
-                  updateEntry.mutate(
-                    { id: editingEntry.id, updates },
-                    { onSuccess: () => setEditingEntry(null) },
-                  )
+              <FoodForm
+                defaultValues={toFormValues(editingEntry)}
+                onSubmit={updates => {
+                  updateEntry.mutate({ id: editingEntry.id, updates }, { onSuccess: () => setEditingEntry(null) })
                 }}
+                submitLabel="Save Changes"
               />
             )}
           </DialogContent>
@@ -394,24 +514,18 @@ function SortableEntry({
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="min-w-0 flex-1 ml-2 space-y-1.5">
-          <p className="font-medium text-sm truncate">{entry.label}</p>
-          {entry.description && (
-            <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
-              <Linkify text={entry.description} />
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {Number(entry.fat_g)}f · {Number(entry.carbs_g)}c · {Number(entry.protein_g)}p
-            <span className="ml-2 font-medium">
-              {Math.round(calcCalories(Number(entry.fat_g), Number(entry.protein_g), Number(entry.carbs_g)))} cal
-            </span>
-          </p>
+        <div className="min-w-0 flex-1 ml-2">
+          <FoodItemContent item={entry} />
         </div>
         <div className="flex gap-1 ml-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onSaveAsFavorite}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-amber-500 hover:text-amber-600"
+                onClick={onSaveAsFavorite}
+              >
                 <Star className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
@@ -421,7 +535,12 @@ function SortableEntry({
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-blue-500 hover:text-blue-600"
+                onClick={onEdit}
+              >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
@@ -429,21 +548,41 @@ function SortableEntry({
               <p>Edit</p>
             </TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:text-destructive"
-                onClick={onDelete}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Delete</p>
-            </TooltipContent>
-          </Tooltip>
+          <AlertDialog>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </AlertDialogTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Delete</p>
+              </TooltipContent>
+            </Tooltip>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete entry?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove "{entry.label}" from today's entries.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={onDelete}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
     </Card>
@@ -478,132 +617,22 @@ function MacroCard({
   )
 }
 
-function AddEntryForm({
-  userId,
-  date,
-  onAdded,
+function FoodForm({
+  defaultValues,
+  onSubmit,
+  submitLabel,
+  isPending,
 }: {
-  userId: string
-  date: string
-  onAdded: () => void
-}) {
-  const addEntry = useAddEntry(userId, date)
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<FoodFormValues>({
-    resolver: zodResolver(foodFormSchema),
-    defaultValues: { label: "", description: "", fat_g: 0, carbs_g: 0, protein_g: 0 },
-  })
-
-  const [fat, carbs, protein] = watch(["fat_g", "carbs_g", "protein_g"])
-  const previewCal = calcCalories(fat, protein, carbs)
-
-  const onSubmit = (values: FoodFormValues) => {
-    addEntry.mutate(
-      {
-        label: values.label.trim(),
-        description: values.description?.trim() || null,
-        fat_g: values.fat_g,
-        protein_g: values.protein_g,
-        carbs_g: values.carbs_g,
-      },
-      { onSuccess: onAdded },
-    )
-  }
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="entry-label">Food</Label>
-        <Input
-          id="entry-label"
-          placeholder="e.g. Chicken breast"
-          aria-invalid={!!errors.label}
-          {...register("label")}
-        />
-        {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="entry-description">
-          Description <span className="text-muted-foreground font-normal">(optional)</span>
-        </Label>
-        <Textarea id="entry-description" placeholder="e.g. Grilled, 8oz" rows={2} {...register("description")} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="entry-fat">Fat (g)</Label>
-          <Input
-            id="entry-fat"
-            type="number"
-            min="0"
-            step="0.1"
-            placeholder="0"
-            {...register("fat_g", { valueAsNumber: true })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="entry-carbs">Carbs (g)</Label>
-          <Input
-            id="entry-carbs"
-            type="number"
-            min="0"
-            step="0.1"
-            placeholder="0"
-            {...register("carbs_g", { valueAsNumber: true })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="entry-protein">Protein (g)</Label>
-          <Input
-            id="entry-protein"
-            type="number"
-            min="0"
-            step="0.1"
-            placeholder="0"
-            {...register("protein_g", { valueAsNumber: true })}
-          />
-        </div>
-      </div>
-
-      <p className="text-xs text-muted-foreground text-center">
-        {(fat > 0 || protein > 0 || carbs > 0) && <span className="block mb-1">{Math.round(previewCal)} cal</span>}
-        <a
-          href="https://www.nutritionix.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-        >
-          Look up nutrition info
-          <ExternalLink className="h-3 w-3" />
-        </a>
-      </p>
-
-      <Button type="submit" className="w-full" disabled={addEntry.isPending}>
-        {addEntry.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-        Add Entry
-      </Button>
-    </form>
-  )
-}
-
-function EditFavoriteForm({
-  favorite,
-  onSave,
-}: {
-  favorite: FoodFavorite
-  onSave: (updates: {
+  defaultValues?: Partial<FoodFormValues>
+  onSubmit: (values: {
     label: string
     description: string | null
     fat_g: number
     protein_g: number
     carbs_g: number
   }) => void
+  submitLabel: string
+  isPending?: boolean
 }) {
   const {
     register,
@@ -613,19 +642,23 @@ function EditFavoriteForm({
   } = useForm<FoodFormValues>({
     resolver: zodResolver(foodFormSchema),
     defaultValues: {
-      label: favorite.label,
-      description: favorite.description || "",
-      fat_g: Number(favorite.fat_g),
-      carbs_g: Number(favorite.carbs_g),
-      protein_g: Number(favorite.protein_g),
+      label: "",
+      description: "",
+      ...defaultValues,
     },
   })
 
   const [fat, carbs, protein] = watch(["fat_g", "carbs_g", "protein_g"])
-  const previewCal = calcCalories(fat, protein, carbs)
+  const f = fat || 0
+  const c = carbs || 0
+  const p = protein || 0
+  const fatCal = f * 9
+  const carbsCal = c * 4
+  const proteinCal = p * 4
+  const previewCal = fatCal + carbsCal + proteinCal
 
-  const onSubmit = (values: FoodFormValues) => {
-    onSave({
+  const handleFormSubmit = (values: FoodFormValues) => {
+    onSubmit({
       label: values.label.trim(),
       description: values.description?.trim() || null,
       fat_g: values.fat_g,
@@ -635,154 +668,77 @@ function EditFavoriteForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="edit-favorite-label">Name</Label>
-        <Input id="edit-favorite-label" aria-invalid={!!errors.label} {...register("label")} />
+        <Label htmlFor="food-label">Food</Label>
+        <Input id="food-label" aria-invalid={!!errors.label} {...register("label")} />
         {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="edit-favorite-description">
+        <Label htmlFor="food-description">
           Description <span className="text-muted-foreground font-normal">(optional)</span>
         </Label>
-        <Textarea id="edit-favorite-description" placeholder="e.g. Grilled, 8oz" rows={2} {...register("description")} />
+        <Textarea id="food-description" rows={2} {...register("description")} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="edit-favorite-fat">Fat (g)</Label>
+          <Label htmlFor="food-fat">Fat (g)</Label>
           <Input
-            id="edit-favorite-fat"
+            id="food-fat"
             type="number"
             min="0"
             step="0.1"
+            aria-invalid={!!errors.fat_g}
             {...register("fat_g", { valueAsNumber: true })}
           />
+          {errors.fat_g && <p className="text-xs text-destructive">{errors.fat_g.message}</p>}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {Math.round(fatCal)} cal{previewCal > 0 && ` · ${Math.round((fatCal / previewCal) * 100)}%`}
+          </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="edit-favorite-carbs">Carbs (g)</Label>
+          <Label htmlFor="food-carbs">Carbs (g)</Label>
           <Input
-            id="edit-favorite-carbs"
+            id="food-carbs"
             type="number"
             min="0"
             step="0.1"
+            aria-invalid={!!errors.carbs_g}
             {...register("carbs_g", { valueAsNumber: true })}
           />
+          {errors.carbs_g && <p className="text-xs text-destructive">{errors.carbs_g.message}</p>}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {Math.round(carbsCal)} cal{previewCal > 0 && ` · ${Math.round((carbsCal / previewCal) * 100)}%`}
+          </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="edit-favorite-protein">Protein (g)</Label>
+          <Label htmlFor="food-protein">Protein (g)</Label>
           <Input
-            id="edit-favorite-protein"
+            id="food-protein"
             type="number"
             min="0"
             step="0.1"
+            aria-invalid={!!errors.protein_g}
             {...register("protein_g", { valueAsNumber: true })}
           />
+          {errors.protein_g && <p className="text-xs text-destructive">{errors.protein_g.message}</p>}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {Math.round(proteinCal)} cal{previewCal > 0 && ` · ${Math.round((proteinCal / previewCal) * 100)}%`}
+          </p>
         </div>
       </div>
 
-      {(fat > 0 || protein > 0 || carbs > 0) && (
-        <p className="text-sm text-muted-foreground text-center">{Math.round(previewCal)} cal</p>
+      {previewCal > 0 && (
+        <p className="text-sm text-muted-foreground text-center font-medium tabular-nums">
+          {Math.round(previewCal)} cal
+        </p>
       )}
 
-      <Button type="submit" className="w-full">
-        Save Changes
-      </Button>
-    </form>
-  )
-}
-
-function EditEntryForm({
-  entry,
-  onSave,
-}: {
-  entry: FoodEntry
-  onSave: (updates: {
-    label: string
-    description: string | null
-    fat_g: number
-    protein_g: number
-    carbs_g: number
-  }) => void
-}) {
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<FoodFormValues>({
-    resolver: zodResolver(foodFormSchema),
-    defaultValues: {
-      label: entry.label,
-      description: entry.description || "",
-      fat_g: Number(entry.fat_g),
-      carbs_g: Number(entry.carbs_g),
-      protein_g: Number(entry.protein_g),
-    },
-  })
-
-  const [fat, carbs, protein] = watch(["fat_g", "carbs_g", "protein_g"])
-  const previewCal = calcCalories(fat, protein, carbs)
-
-  const onSubmit = (values: FoodFormValues) => {
-    onSave({
-      label: values.label.trim(),
-      description: values.description?.trim() || null,
-      fat_g: values.fat_g,
-      protein_g: values.protein_g,
-      carbs_g: values.carbs_g,
-    })
-  }
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="edit-entry-label">Food</Label>
-        <Input id="edit-entry-label" aria-invalid={!!errors.label} {...register("label")} />
-        {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="edit-entry-description">
-          Description <span className="text-muted-foreground font-normal">(optional)</span>
-        </Label>
-        <Textarea id="edit-entry-description" placeholder="e.g. Grilled, 8oz" rows={2} {...register("description")} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="edit-entry-fat">Fat (g)</Label>
-          <Input id="edit-entry-fat" type="number" min="0" step="0.1" {...register("fat_g", { valueAsNumber: true })} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="edit-entry-carbs">Carbs (g)</Label>
-          <Input
-            id="edit-entry-carbs"
-            type="number"
-            min="0"
-            step="0.1"
-            {...register("carbs_g", { valueAsNumber: true })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="edit-entry-protein">Protein (g)</Label>
-          <Input
-            id="edit-entry-protein"
-            type="number"
-            min="0"
-            step="0.1"
-            {...register("protein_g", { valueAsNumber: true })}
-          />
-        </div>
-      </div>
-
-      {(fat > 0 || protein > 0 || carbs > 0) && (
-        <p className="text-sm text-muted-foreground text-center">{Math.round(previewCal)} cal</p>
-      )}
-
-      <Button type="submit" className="w-full">
-        Save Changes
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+        {submitLabel}
       </Button>
     </form>
   )

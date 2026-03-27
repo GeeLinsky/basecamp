@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Loader2, Check, Camera } from "lucide-react"
-import { toast } from "react-toastify"
+import { toast } from "sonner"
 import { useAuth } from "@/context/AuthContext"
+import { validateImageFile } from "@/utils/validate-image"
 
 const supabase = createClient()
 
@@ -25,7 +26,7 @@ const passwordSchema = z
 
 const callbackSchema = z
   .object({
-    displayName: z.string().min(1, "Display name is required"),
+    displayName: z.string().min(1, "Username is required"),
     password: passwordSchema,
     confirmPassword: z.string(),
   })
@@ -72,15 +73,7 @@ export default function AuthCallbackPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file")
-      return
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image must be less than 2MB")
-      return
-    }
+    if (!validateImageFile(file)) return
 
     setAvatarFile(file)
     setAvatarPreview(URL.createObjectURL(file))
@@ -209,14 +202,8 @@ export default function AuthCallbackPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="callback-name">Display Name</Label>
-              <Input
-                id="callback-name"
-                type="text"
-                placeholder="Your name"
-                aria-invalid={!!errors.displayName}
-                {...register("displayName")}
-              />
+              <Label htmlFor="callback-name">Username</Label>
+              <Input id="callback-name" type="text" aria-invalid={!!errors.displayName} {...register("displayName")} />
               {errors.displayName && <p className="text-xs text-destructive">{errors.displayName.message}</p>}
             </div>
 
@@ -225,7 +212,6 @@ export default function AuthCallbackPage() {
               <Input
                 id="callback-password"
                 type="password"
-                placeholder="••••••••"
                 aria-invalid={!!errors.password}
                 {...register("password")}
               />
@@ -237,7 +223,6 @@ export default function AuthCallbackPage() {
               <Input
                 id="callback-confirm"
                 type="password"
-                placeholder="••••••••"
                 aria-invalid={!!errors.confirmPassword}
                 {...register("confirmPassword")}
               />

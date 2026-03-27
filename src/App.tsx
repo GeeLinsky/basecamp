@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { logPageView } from "./utils/analytics"
 import { initGA } from "./utils/analytics"
 import ComponentsShowcasePage from "./pages/dashboard/ComponentShowcasePage"
-import { ToastContainer } from "react-toastify"
+import { Toaster } from "sonner"
 import DashboardLayout from "./layout/DashboardLayout"
 import SettingsPage from "./pages/dashboard/SettingsPage"
 import FuelUpPage from "./pages/dashboard/FuelUpPage"
@@ -21,8 +21,9 @@ const App = () => {
   }, [])
 
   useEffect(() => {
+    window.scrollTo(0, 0)
     logPageView(location.pathname + location.search)
-  }, [location])
+  }, [location.pathname])
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -62,7 +63,7 @@ const App = () => {
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
 
-      <ToastContainer theme="colored" />
+      <Toaster richColors />
     </>
   )
 }

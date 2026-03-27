@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Outlet, NavLink, Navigate } from "react-router-dom"
 import {
   Sidebar,
@@ -15,16 +16,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Settings, Home, Flame, Blocks, LogOut } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Home, Flame, Blocks } from "lucide-react"
 import ColorToggle from "@/components/color/ColorToggle"
 import ThemeToggle from "@/components/theme/ThemeToggle"
 import { useAuth } from "@/context/AuthContext"
 import { useConfigContext } from "@/context/ConfigContext"
+import { UserAvatar } from "@/components/UserAvatar"
+import { AccountMenuContent } from "@/components/AccountMenuContent"
 
 const navItems = [
   { to: "/dashboard/fuelup", label: "FuelUp", icon: Flame },
@@ -45,20 +44,16 @@ const DashboardLayout = () => {
 
   if (!user) return <Navigate to="/" replace />
 
+  const logoUrl = isDark
+    ? "https://statix.geelinsky.com/images/g-key-white.png"
+    : "https://statix.geelinsky.com/images/g-key-black.png"
+
   return (
     <SidebarProvider defaultOpen={getSidebarDefault()}>
       <Sidebar collapsible="icon">
         <SidebarHeader className="flex items-center justify-center py-4">
           <NavLink to="/">
-            <img
-              src={
-                isDark
-                  ? "https://statix.geelinsky.com/images/g-key-white.png"
-                  : "https://statix.geelinsky.com/images/g-key-black.png"
-              }
-              alt="GeeLinsky"
-              className="size-8 cursor-pointer"
-            />
+            <img src={logoUrl} alt="GeeLinsky" className="size-8 cursor-pointer" />
           </NavLink>
         </SidebarHeader>
 
@@ -71,15 +66,7 @@ const DashboardLayout = () => {
         <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-3 md:hidden">
           <SidebarTrigger className="size-9" />
           <NavLink to="/">
-            <img
-              src={
-                isDark
-                  ? "https://statix.geelinsky.com/images/g-key-white.png"
-                  : "https://statix.geelinsky.com/images/g-key-black.png"
-              }
-              alt="GeeLinsky"
-              className="size-6 cursor-pointer"
-            />
+            <img src={logoUrl} alt="GeeLinsky" className="size-6 cursor-pointer" />
           </NavLink>
           <MobileNavbarControls />
         </header>
@@ -120,12 +107,10 @@ function SidebarNavContent() {
 
 function SidebarFooterControls() {
   const { open } = useSidebar()
-  const { user, signOut, avatarUrl, avatarLoading } = useAuth()
+  const { user } = useAuth()
   const { isDark } = useConfigContext()
   const tooltipSide = open ? "top" : "right"
-
-  const displayName = (user?.user_metadata?.display_name as string) || ""
-  const initials = (displayName || user?.email || "?").charAt(0).toUpperCase()
+  const [accountOpen, setAccountOpen] = useState(false)
 
   return (
     <SidebarFooter className="hidden md:flex">
@@ -133,36 +118,14 @@ function SidebarFooterControls() {
         <SidebarMenuItem>
           <div className="flex items-center justify-center gap-1 group-data-[collapsible=icon]:flex-col">
             {user && (
-              <Popover>
+              <Popover open={accountOpen} onOpenChange={setAccountOpen}>
                 <PopoverTrigger asChild>
                   <div className="size-9 flex items-center justify-center cursor-pointer">
-                    {avatarLoading ? (
-                      <Skeleton className="size-7 rounded-full" />
-                    ) : (
-                      <Avatar className="size-7">
-                        {avatarUrl ? (
-                          <AvatarImage src={avatarUrl} alt={displayName} />
-                        ) : (
-                          <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
-                        )}
-                      </Avatar>
-                    )}
+                    <UserAvatar className="size-7" fallbackClassName="text-[10px]" />
                   </div>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-48 p-2" onOpenAutoFocus={e => e.preventDefault()}>
-                  <div className="space-y-1">
-                    <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                      <NavLink to="/dashboard/settings">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Settings
-                      </NavLink>
-                    </Button>
-                    <Separator />
-                    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </Button>
-                  </div>
+                <PopoverContent side="top" align="start" className="w-auto min-w-48 p-2" onOpenAutoFocus={e => e.preventDefault()}>
+                  <AccountMenuContent onAction={() => setAccountOpen(false)} />
                 </PopoverContent>
               </Popover>
             )}
@@ -200,46 +163,22 @@ function SidebarFooterControls() {
 }
 
 function MobileNavbarControls() {
-  const { user, signOut, avatarUrl, avatarLoading } = useAuth()
-
-  const displayName = (user?.user_metadata?.display_name as string) || ""
-  const initials = (displayName || user?.email || "?").charAt(0).toUpperCase()
+  const { user } = useAuth()
+  const [accountOpen, setAccountOpen] = useState(false)
 
   return (
     <div className="ml-auto flex items-center gap-1">
       <ThemeToggle />
       <ColorToggle variant="ghost" size="icon" className="size-9" />
       {user && (
-        <Popover>
+        <Popover open={accountOpen} onOpenChange={setAccountOpen}>
           <PopoverTrigger asChild>
             <div className="size-9 flex items-center justify-center cursor-pointer">
-              {avatarLoading ? (
-                <Skeleton className="size-7 rounded-full" />
-              ) : (
-                <Avatar className="size-7">
-                  {avatarUrl ? (
-                    <AvatarImage src={avatarUrl} alt={displayName} />
-                  ) : (
-                    <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
-                  )}
-                </Avatar>
-              )}
+              <UserAvatar className="size-7" fallbackClassName="text-[10px]" />
             </div>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="end" className="w-48 p-2" onOpenAutoFocus={e => e.preventDefault()}>
-            <div className="space-y-1">
-              <Button variant="ghost" size="sm" className="w-full justify-start" asChild>
-                <NavLink to="/dashboard/settings">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </NavLink>
-              </Button>
-              <Separator />
-              <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
+          <PopoverContent side="bottom" align="end" className="w-auto min-w-48 p-2" onOpenAutoFocus={e => e.preventDefault()}>
+            <AccountMenuContent onAction={() => setAccountOpen(false)} />
           </PopoverContent>
         </Popover>
       )}

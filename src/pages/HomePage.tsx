@@ -22,11 +22,9 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Link } from "react-router-dom"
 import classNames from "classnames"
@@ -36,8 +34,10 @@ import ColorToggle from "@/components/color/ColorToggle"
 import { isDesktop } from "react-device-detect"
 import { useConfigContext } from "@/context/ConfigContext"
 import { useAuth } from "@/context/AuthContext"
+import { UserAvatar } from "@/components/UserAvatar"
+import { useUserDisplay } from "@/hooks/use-user-display"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "react-toastify"
+import { toast } from "sonner"
 
 const supabase = createClient()
 
@@ -257,7 +257,8 @@ export default function DigitalCard() {
 }
 
 function AuthPopover() {
-  const { user, loading: authLoading, signOut, avatarUrl, avatarLoading } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
+  const { displayName } = useUserDisplay()
   const [open, setOpen] = useState(false)
 
   if (authLoading) {
@@ -268,25 +269,10 @@ function AuthPopover() {
     )
   }
 
-  const displayName = user?.user_metadata?.display_name as string | undefined
-  const initials = (displayName || user?.email || "?").charAt(0).toUpperCase()
-
   const trigger = user ? (
-    avatarLoading ? (
-      <div className="h-8 w-8 flex items-center justify-center">
-        <Skeleton className="h-8 w-8 rounded-full" />
-      </div>
-    ) : (
-      <button className="h-8 w-8 rounded-full overflow-hidden border-2 border-border hover:border-primary transition-colors cursor-pointer">
-        <Avatar className="h-full w-full">
-          {avatarUrl ? (
-            <AvatarImage src={avatarUrl} alt={displayName} />
-          ) : (
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-          )}
-        </Avatar>
-      </button>
-    )
+    <button className="h-8 w-8 rounded-full overflow-hidden border-2 border-border hover:border-primary transition-colors cursor-pointer">
+      <UserAvatar className="h-full w-full" fallbackClassName="text-xs" />
+    </button>
   ) : (
     <Button variant="outline" size="icon" className="h-8 w-8">
       <User className="h-4 w-4" />
@@ -314,17 +300,7 @@ function AuthPopover() {
         {user ? (
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              {avatarLoading ? (
-                <Skeleton className="h-10 w-10 rounded-full" />
-              ) : (
-                <Avatar className="h-10 w-10">
-                  {avatarUrl ? (
-                    <AvatarImage src={avatarUrl} alt={displayName} />
-                  ) : (
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  )}
-                </Avatar>
-              )}
+              <UserAvatar className="h-10 w-10" />
               <div className="text-sm min-w-0">
                 <p className="font-medium truncate">{displayName || "User"}</p>
                 <p className="text-muted-foreground text-xs truncate">{user.email}</p>
@@ -420,24 +396,12 @@ function SignInForm({ onSuccess }: { onSuccess: () => void }) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-3">
       <div className="space-y-1.5">
         <Label htmlFor="sign-in-email">Email</Label>
-        <Input
-          id="sign-in-email"
-          type="email"
-          placeholder="you@example.com"
-          aria-invalid={!!errors.email}
-          {...register("email")}
-        />
+        <Input id="sign-in-email" type="email" aria-invalid={!!errors.email} {...register("email")} />
         {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="sign-in-password">Password</Label>
-        <Input
-          id="sign-in-password"
-          type="password"
-          placeholder="••••••••"
-          aria-invalid={!!errors.password}
-          {...register("password")}
-        />
+        <Input id="sign-in-password" type="password" aria-invalid={!!errors.password} {...register("password")} />
         {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
       </div>
       <Button type="submit" className="w-full" disabled={isSubmitting}>

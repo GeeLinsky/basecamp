@@ -3,29 +3,29 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useAuth } from "@/context/AuthContext"
+import { useUserDisplay } from "@/hooks/use-user-display"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Loader2, Upload, Trash2 } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { toast } from "react-toastify"
+import { UserAvatar } from "@/components/UserAvatar"
+import { validateImageFile } from "@/utils/validate-image"
+import { toast } from "sonner"
 
 const supabase = createClient()
 
 const nameSchema = z.object({
-  displayName: z.string().min(1, "Display name is required"),
+  displayName: z.string().min(1, "Username is required"),
 })
 
 type NameValues = z.infer<typeof nameSchema>
 
 export default function SettingsPage() {
-  const { user, avatarUrl, avatarLoading: loading, refreshAvatar } = useAuth()
-
-  const currentDisplayName = (user?.user_metadata?.display_name as string) || ""
+  const { user, avatarUrl, refreshAvatar } = useAuth()
+  const { displayName: currentDisplayName } = useUserDisplay()
   const [uploading, setUploading] = useState(false)
   const [removing, setRemoving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -46,17 +46,15 @@ export default function SettingsPage() {
 
   if (!user) return null
 
-  const initials = (currentDisplayName || user.email || "?").charAt(0).toUpperCase()
-
   const onSaveName = async (values: NameValues) => {
     const { error } = await supabase.auth.updateUser({
       data: { display_name: values.displayName.trim() },
     })
 
     if (error) {
-      toast.error("Failed to update display name")
+      toast.error("Failed to update username")
     } else {
-      toast.success("Display name updated")
+      toast.success("Username updated")
     }
   }
 
@@ -64,15 +62,7 @@ export default function SettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file")
-      return
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image must be less than 2MB")
-      return
-    }
+    if (!validateImageFile(file)) return
 
     setUploading(true)
     try {
@@ -131,17 +121,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            {loading ? (
-              <Skeleton className="h-20 w-20 rounded-full" />
-            ) : (
-              <Avatar className="h-20 w-20">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} alt={currentDisplayName} />
-                ) : (
-                  <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-                )}
-              </Avatar>
-            )}
+            <UserAvatar className="h-20 w-20" fallbackClassName="text-lg" />
 
             <div className="flex flex-col gap-2">
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
@@ -169,19 +149,14 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Display Name</CardTitle>
+          <CardTitle>Username</CardTitle>
           <CardDescription>This is the name shown on your profile.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSaveName)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="display-name">Name</Label>
-              <Input
-                id="display-name"
-                placeholder="Your name"
-                aria-invalid={!!errors.displayName}
-                {...register("displayName")}
-              />
+              <Label htmlFor="display-name">Username</Label>
+              <Input id="display-name" aria-invalid={!!errors.displayName} {...register("displayName")} />
               {errors.displayName && <p className="text-xs text-destructive">{errors.displayName.message}</p>}
             </div>
             <Button type="submit" disabled={isSubmitting || !isDirty} size="sm">

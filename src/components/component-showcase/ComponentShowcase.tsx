@@ -184,7 +184,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer"
 import { NativeSelect, NativeSelectOption, NativeSelectOptGroup } from "@/components/ui/native-select"
-import { toast } from "react-toastify"
+import { toast } from "sonner"
 
 function Users(props: any) {
   return (
@@ -232,21 +232,22 @@ function UserPlus(props: any) {
 
 const ComponentShowcase = () => {
   const [date, setDate] = useState<Date>()
+  const [calPickerOpen, setCalPickerOpen] = useState(false)
 
   return (
     <div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Component Showcase</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Component Showcase</h1>
       </div>
 
       <Separator className="my-6" />
 
-      <div className="space-y-12">
+      <div className="space-y-8 sm:space-y-12">
         {/* SECTION 1: LAYOUT COMPONENTS */}
         <section>
-          <h2 className="text-2xl font-bold tracking-tight mb-6">Layout Components</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-4 sm:mb-6">Layout Components</h2>
 
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-4 sm:space-y-6">
             {/* Accordion */}
             <Card>
               <CardHeader>
@@ -296,7 +297,7 @@ const ComponentShowcase = () => {
                 <CardDescription>Cycling through elements</CardDescription>
               </CardHeader>
               <CardContent>
-                <Carousel className="w-full max-w-xs ml-12">
+                <Carousel className="w-full max-w-xs mx-auto">
                   <CarouselContent>
                     {Array.from({ length: 5 }).map((_, index) => (
                       <CarouselItem key={index}>
@@ -310,8 +311,10 @@ const ComponentShowcase = () => {
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  <CarouselPrevious />
-                  <CarouselNext />
+                  <div className="flex justify-center gap-2 mt-4">
+                    <CarouselPrevious className="static translate-y-0" />
+                    <CarouselNext className="static translate-y-0" />
+                  </div>
                 </Carousel>
               </CardContent>
             </Card>
@@ -445,7 +448,7 @@ const ComponentShowcase = () => {
                       </SheetContent>
                     </Sheet>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Sheet>
                       <SheetTrigger asChild>
                         <Button variant="outline">Open Bottom</Button>
@@ -481,7 +484,7 @@ const ComponentShowcase = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Drawer>
                       <DrawerTrigger asChild>
                         <Button variant="outline">Open Bottom Drawer</Button>
@@ -531,7 +534,7 @@ const ComponentShowcase = () => {
                       </DrawerContent>
                     </Drawer>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Drawer direction="left">
                       <DrawerTrigger asChild>
                         <Button variant="outline">Open Left Drawer</Button>
@@ -610,9 +613,9 @@ const ComponentShowcase = () => {
 
         {/* SECTION 2: FORM COMPONENTS */}
         <section>
-          <h2 className="text-2xl font-bold tracking-tight mb-6">Form Components</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-4 sm:mb-6">Form Components</h2>
 
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-4 sm:space-y-6">
             {/* Button */}
             <Card>
               <CardHeader>
@@ -889,7 +892,7 @@ const ComponentShowcase = () => {
                 <CardTitle>Input OTP</CardTitle>
                 <CardDescription>One-time password input for verification codes</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 overflow-hidden">
                 <div className="space-y-2">
                   <Label>6-digit OTP</Label>
                   <InputOTP maxLength={6}>
@@ -905,17 +908,15 @@ const ComponentShowcase = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>With Separator</Label>
-                  <InputOTP maxLength={6}>
+                  <InputOTP maxLength={4}>
                     <InputOTPGroup>
                       <InputOTPSlot index={0} />
                       <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
                     </InputOTPGroup>
                     <InputOTPSeparator />
                     <InputOTPGroup>
+                      <InputOTPSlot index={2} />
                       <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
@@ -1048,22 +1049,22 @@ const ComponentShowcase = () => {
                 <CardDescription>Two-state button that can be toggled on or off</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Toggle>Bold</Toggle>
                   <Toggle>Italic</Toggle>
                   <Toggle>Underline</Toggle>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Toggle variant="outline">Bold</Toggle>
                   <Toggle variant="outline">Italic</Toggle>
                   <Toggle variant="outline">Underline</Toggle>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Toggle size="sm">Small</Toggle>
                   <Toggle>Default</Toggle>
                   <Toggle size="lg">Large</Toggle>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Toggle disabled>Disabled</Toggle>
                   <Toggle disabled defaultPressed>
                     Disabled (On)
@@ -1131,18 +1132,24 @@ const ComponentShowcase = () => {
                 <CardDescription>A date field component with a popover calendar</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Basic Calendar</Label>
-                    <div className="mt-2 border rounded-md p-4">
-                      <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md" />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Selected Date</Label>
-                    <div className="mt-2">{date ? format(date, "PPP") : "No date selected"}</div>
-                  </div>
-                </div>
+                <Popover open={calPickerOpen} onOpenChange={setCalPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal cursor-pointer">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={d => {
+                        setDate(d)
+                        setCalPickerOpen(false)
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
               </CardContent>
             </Card>
 
@@ -1179,9 +1186,9 @@ const ComponentShowcase = () => {
 
         {/* SECTION 3: DATA DISPLAY COMPONENTS */}
         <section>
-          <h2 className="text-2xl font-bold tracking-tight mb-6">Data Display Components</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-4 sm:mb-6">Data Display Components</h2>
 
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-4 sm:space-y-6">
             {/* Avatar */}
             <Card>
               <CardHeader>
@@ -1293,15 +1300,15 @@ const ComponentShowcase = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
-                  <Skeleton className="h-4 w-[250px]" />
+                  <Skeleton className="h-4 w-full max-w-[250px]" />
+                  <Skeleton className="h-4 w-full max-w-[200px]" />
+                  <Skeleton className="h-4 w-full max-w-[250px]" />
                 </div>
                 <div className="flex items-center space-x-4 mt-4">
-                  <Skeleton className="h-12 w-12 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-[250px]" />
-                    <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+                  <div className="space-y-2 min-w-0 flex-1">
+                    <Skeleton className="h-4 w-full max-w-[250px]" />
+                    <Skeleton className="h-4 w-full max-w-[200px]" />
                   </div>
                 </div>
               </CardContent>
@@ -1526,9 +1533,9 @@ const ComponentShowcase = () => {
 
         {/* SECTION 4: FEEDBACK COMPONENTS */}
         <section>
-          <h2 className="text-2xl font-bold tracking-tight mb-6">Feedback Components</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-4 sm:mb-6">Feedback Components</h2>
 
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-4 sm:space-y-6">
             {/* Alert */}
             <Card>
               <CardHeader>
@@ -1778,10 +1785,10 @@ const ComponentShowcase = () => {
               </CardContent>
             </Card>
 
-            {/* Toast (react-toastify) */}
+            {/* Toast (sonner) */}
             <Card>
               <CardHeader>
-                <CardTitle>Toast (react-toastify)</CardTitle>
+                <CardTitle>Toast (Sonner)</CardTitle>
                 <CardDescription>Notification messages for user feedback</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1800,43 +1807,14 @@ const ComponentShowcase = () => {
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      toast("Default toast message", {
-                        position: "top-right",
-                      })
-                    }
-                  >
-                    Top Right
+                  <Button variant="outline" onClick={() => toast("Default toast message")}>
+                    Default Toast
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      toast("Default toast message", {
-                        position: "top-center",
-                      })
-                    }
-                  >
-                    Top Center
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      toast("Default toast message", {
-                        position: "bottom-right",
-                      })
-                    }
-                  >
-                    Bottom Right
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     onClick={() =>
                       toast.promise(new Promise(resolve => setTimeout(resolve, 2000)), {
-                        pending: "Loading...",
+                        loading: "Loading...",
                         success: "Operation completed!",
                         error: "Something went wrong",
                       })
@@ -1848,7 +1826,7 @@ const ComponentShowcase = () => {
                     variant="outline"
                     onClick={() =>
                       toast("This will auto-close in 5 seconds", {
-                        autoClose: 5000,
+                        duration: 5000,
                       })
                     }
                   >
@@ -1862,9 +1840,9 @@ const ComponentShowcase = () => {
 
         {/* SECTION 5: NAVIGATION COMPONENTS */}
         <section>
-          <h2 className="text-2xl font-bold tracking-tight mb-6">Navigation Components</h2>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-4 sm:mb-6">Navigation Components</h2>
 
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-4 sm:space-y-6">
             {/* Breadcrumb */}
             <Card>
               <CardHeader>
@@ -2101,9 +2079,9 @@ const ComponentShowcase = () => {
                 <CardTitle>Navigation Menu</CardTitle>
                 <CardDescription>A responsive navigation component</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="overflow-hidden">
                 <NavigationMenu>
-                  <NavigationMenuList>
+                  <NavigationMenuList className="flex-wrap">
                     <NavigationMenuItem>
                       <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
                       <NavigationMenuContent>
@@ -2199,11 +2177,11 @@ const ComponentShowcase = () => {
                 <CardTitle>Pagination</CardTitle>
                 <CardDescription>Navigate between pages of content</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 overflow-hidden">
                 <div>
                   <Label>Basic Pagination</Label>
                   <Pagination className="mt-2">
-                    <PaginationContent>
+                    <PaginationContent className="flex-wrap">
                       <PaginationItem>
                         <PaginationPrevious href="#" />
                       </PaginationItem>
@@ -2230,7 +2208,7 @@ const ComponentShowcase = () => {
                 <div>
                   <Label>With More Pages</Label>
                   <Pagination className="mt-2">
-                    <PaginationContent>
+                    <PaginationContent className="flex-wrap">
                       <PaginationItem>
                         <PaginationPrevious href="#" />
                       </PaginationItem>
@@ -2244,12 +2222,6 @@ const ComponentShowcase = () => {
                         <PaginationLink href="#" isActive>
                           3
                         </PaginationLink>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLink href="#">4</PaginationLink>
-                      </PaginationItem>
-                      <PaginationItem>
-                        <PaginationLink href="#">5</PaginationLink>
                       </PaginationItem>
                       <PaginationItem>
                         <PaginationEllipsis />
