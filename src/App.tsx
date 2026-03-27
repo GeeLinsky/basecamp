@@ -58,7 +58,7 @@ const App = () => {
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
 
-      <Toaster richColors />
+      <Toaster richColors theme={isDark ? "dark" : "light"} />
 
       {IS_DEV && devtoolsEnabled && <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />}
     </>

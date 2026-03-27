@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
+import { isDesktop } from "react-device-detect"
 
 import { cn } from "@/lib/utils"
 
@@ -19,7 +20,13 @@ function TooltipProvider({
 function Tooltip({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
-  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+  return (
+    <TooltipPrimitive.Root
+      data-slot="tooltip"
+      {...props}
+      {...(!isDesktop && { open: false })}
+    />
+  )
 }
 
 function TooltipTrigger({

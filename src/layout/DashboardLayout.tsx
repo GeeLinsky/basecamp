@@ -205,23 +205,46 @@ function SidebarFooterControls({
 
 function MobileNavbarControls() {
   const { user } = useAuth()
-  const { devtoolsEnabled, setDevtoolsEnabled } = useConfigContext()
+  const { isDark, devtoolsEnabled, setDevtoolsEnabled } = useConfigContext()
   const [accountOpen, setAccountOpen] = useState(false)
 
   return (
     <div className="ml-auto flex items-center gap-1">
       {IS_DEV && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`size-9 cursor-pointer ${devtoolsEnabled ? "text-primary" : ""}`}
-          onClick={() => setDevtoolsEnabled(prev => !prev)}
-        >
-          <SquareActivity className="size-4" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`size-9 cursor-pointer ${devtoolsEnabled ? "text-primary" : ""}`}
+              onClick={() => setDevtoolsEnabled(prev => !prev)}
+            >
+              <SquareActivity className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>React Query Devtools</p>
+          </TooltipContent>
+        </Tooltip>
       )}
-      <ThemeToggle />
-      <ColorToggle variant="ghost" size="icon" className="size-9" />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>
+            <ThemeToggle />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Change theme</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <ColorToggle variant="ghost" size="icon" className="size-9" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isDark ? "Light mode" : "Dark mode"}</p>
+        </TooltipContent>
+      </Tooltip>
       {user && (
         <Popover open={accountOpen} onOpenChange={setAccountOpen}>
           <PopoverTrigger asChild>
