@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import { Helmet } from "react-helmet-async"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -127,6 +128,10 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <Helmet>
+        <title>Settings | GeeLinsky</title>
+        <meta name="description" content="Manage your account and preferences." />
+      </Helmet>
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your profile and account.</p>

@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Outlet, NavLink, Navigate } from "react-router-dom"
+import { Outlet, NavLink, Navigate, useNavigate } from "react-router-dom"
+import { ErrorBoundary } from "react-error-boundary"
 import {
   Sidebar,
   SidebarContent,
@@ -17,7 +18,8 @@ import {
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Home, Flame, Blocks } from "lucide-react"
+import { Home, Flame, Blocks, RotateCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import ColorToggle from "@/components/color/ColorToggle"
 import ThemeToggle from "@/components/theme/ThemeToggle"
 import { useAuth } from "@/context/AuthContext"
@@ -39,6 +41,7 @@ function getSidebarDefault() {
 const DashboardLayout = () => {
   const { isDark } = useConfigContext()
   const { user, loading } = useAuth()
+  const navigate = useNavigate()
 
   if (loading) return null
 
@@ -71,7 +74,21 @@ const DashboardLayout = () => {
           <MobileNavbarControls />
         </header>
         <div className="p-6">
-          <Outlet />
+          <ErrorBoundary
+            fallbackRender={({ resetErrorBoundary }) => (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <h2 className="text-xl font-semibold">Something went wrong</h2>
+                <p className="text-sm text-muted-foreground">This page crashed unexpectedly.</p>
+                <Button variant="outline" size="sm" onClick={resetErrorBoundary} className="cursor-pointer">
+                  <RotateCcw className="h-4 w-4 mr-1.5" />
+                  Try again
+                </Button>
+              </div>
+            )}
+            onReset={() => navigate(0)}
+          >
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </SidebarInset>
     </SidebarProvider>

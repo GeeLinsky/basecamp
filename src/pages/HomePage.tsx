@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Helmet } from "react-helmet-async"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -27,7 +28,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Link } from "react-router-dom"
-import classNames from "classnames"
+import clsx from "clsx"
 import { linkClassName } from "@/lib/utils"
 import ThemeToggle from "@/components/theme/ThemeToggle"
 import ColorToggle from "@/components/color/ColorToggle"
@@ -45,7 +46,11 @@ export default function DigitalCard() {
   const { isDark } = useConfigContext()
 
   return (
-    <main className={classNames("flex items-center justify-center p-4", { "min-h-screen": isDesktop })}>
+    <main className={clsx("flex items-center justify-center p-4", { "min-h-screen": isDesktop })}>
+      <Helmet>
+        <title>GeeLinsky</title>
+        <meta name="description" content="Garrett Polinsky's personal website and digital card." />
+      </Helmet>
       <Card className="w-full max-w-md overflow-hidden shadow-lg relative pb-0">
         {/* Action Buttons in Top Left */}
         <div className="absolute top-4 left-4 flex gap-2 z-10">
@@ -126,7 +131,7 @@ export default function DigitalCard() {
                 href="https://aliasintelligence.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={classNames("text-sm", linkClassName)}
+                className={clsx("text-sm", linkClassName)}
               >
                 Alias Intelligence
               </a>
@@ -147,7 +152,7 @@ export default function DigitalCard() {
             {/* Email */}
             <div className="flex items-center">
               <Mail className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
-              <a href="mailto:garrett@geelinsky.com" className={classNames("text-sm", linkClassName)}>
+              <a href="mailto:garrett@geelinsky.com" className={clsx("text-sm", linkClassName)}>
                 garrett@geelinsky.com
               </a>
             </div>
@@ -163,7 +168,7 @@ export default function DigitalCard() {
                   href="https://wasatchfitz.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={classNames("text-sm", linkClassName)}
+                  className={clsx("text-sm", linkClassName)}
                 >
                   wasatchfitz.com
                 </a>
@@ -174,7 +179,7 @@ export default function DigitalCard() {
                   href="https://boltscape.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={classNames("text-sm", linkClassName)}
+                  className={clsx("text-sm", linkClassName)}
                 >
                   boltscape.com
                 </a>

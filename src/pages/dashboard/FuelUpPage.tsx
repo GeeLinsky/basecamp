@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react"
+import { Helmet } from "react-helmet-async"
 import { useQueryState, parseAsString } from "nuqs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -25,7 +26,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -170,14 +170,14 @@ function MacroSummary({ fat_g, carbs_g, protein_g }: MacroFields) {
         {fat}f · {carbs}c · {protein}p<span className="ml-2 font-medium">{Math.round(totalCal)} cal</span>
       </p>
       {totalCal > 0 && (
-        <HoverCard openDelay={100} closeDelay={100}>
-          <HoverCardTrigger asChild>
-            <button className="inline-flex items-center gap-1 text-muted-foreground/70 hover:text-muted-foreground text-[11px]">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="inline-flex items-center gap-1 text-muted-foreground/70 hover:text-muted-foreground text-[11px] cursor-pointer">
               <Info className="h-3 w-3" />
               Macro breakdown
             </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" align="start" className="w-auto text-xs tabular-nums p-3">
+          </PopoverTrigger>
+          <PopoverContent side="top" align="start" className="w-auto text-xs tabular-nums p-3">
             <div className="space-y-1">
               <p>
                 <span className="font-medium">{Math.round((fatCal / totalCal) * 100)}%</span> fat ({Math.round(fatCal)}{" "}
@@ -192,8 +192,8 @@ function MacroSummary({ fat_g, carbs_g, protein_g }: MacroFields) {
                 {Math.round(proteinCal)} cal)
               </p>
             </div>
-          </HoverCardContent>
-        </HoverCard>
+          </PopoverContent>
+        </Popover>
       )}
     </div>
   )
@@ -274,6 +274,10 @@ export default function FuelUpPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <Helmet>
+        <title>FuelUp | GeeLinsky</title>
+        <meta name="description" content="Track your daily macros and nutrition." />
+      </Helmet>
       <div>
         <h1 className="text-2xl font-bold">FuelUp</h1>
         <p className="text-muted-foreground text-sm mt-1">Track your daily macros.</p>
