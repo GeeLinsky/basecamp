@@ -1,17 +1,19 @@
+import { useEffect } from "react"
 import { Routes, Route, useLocation, Navigate } from "react-router-dom"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import HomePage from "./pages/HomePage"
 import PageNotFoundPage from "./pages/PageNotFoundPage"
 import { useConfigContext } from "./context/ConfigContext"
-import { useEffect } from "react"
 import ComponentsShowcasePage from "./pages/dashboard/ComponentShowcasePage"
 import { Toaster } from "sonner"
 import DashboardLayout from "./layout/DashboardLayout"
 import SettingsPage from "./pages/dashboard/SettingsPage"
 import FuelUpPage from "./pages/dashboard/FuelUpPage"
 import AuthCallbackPage from "./pages/AuthCallbackPage"
+import { IS_DEV } from "@/utils/env"
 
 const App = () => {
-  const { isDark, theme } = useConfigContext()
+  const { isDark, theme, devtoolsEnabled } = useConfigContext()
   const location = useLocation()
 
   useEffect(() => {
@@ -57,6 +59,8 @@ const App = () => {
       </Routes>
 
       <Toaster richColors />
+
+      {IS_DEV && devtoolsEnabled && <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />}
     </>
   )
 }

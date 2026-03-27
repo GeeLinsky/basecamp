@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { Helmet } from "react-helmet-async"
 import { useNavigate } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -229,6 +230,10 @@ export default function AuthCallbackPage() {
 
   return (
     <main className="flex items-center justify-center min-h-screen p-4">
+      <Helmet>
+        <title>Welcome | GeeLinsky</title>
+        <meta name="description" content="Set up your account." />
+      </Helmet>
       <Card className="w-full max-w-sm">
         <CardContent className="p-6">
           <div className="text-center mb-6">
@@ -325,6 +330,10 @@ function ResetPasswordForm() {
 
   return (
     <main className="flex items-center justify-center min-h-screen p-4">
+      <Helmet>
+        <title>Reset Password | GeeLinsky</title>
+        <meta name="description" content="Reset your password." />
+      </Helmet>
       <Card className="w-full max-w-sm">
         <CardContent className="p-6">
           <div className="text-center mb-6">
@@ -335,12 +344,7 @@ function ResetPasswordForm() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="reset-password">New Password</Label>
-              <Input
-                id="reset-password"
-                type="password"
-                aria-invalid={!!errors.password}
-                {...register("password")}
-              />
+              <Input id="reset-password" type="password" aria-invalid={!!errors.password} {...register("password")} />
               <PasswordRequirements password={password} />
             </div>
 

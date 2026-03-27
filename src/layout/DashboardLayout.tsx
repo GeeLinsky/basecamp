@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Home, Flame, Blocks, RotateCcw } from "lucide-react"
+import { Home, Flame, Blocks, RotateCcw, SquareActivity } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ColorToggle from "@/components/color/ColorToggle"
 import ThemeToggle from "@/components/theme/ThemeToggle"
@@ -26,6 +26,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useConfigContext } from "@/context/ConfigContext"
 import { UserAvatar } from "@/components/UserAvatar"
 import { AccountMenuContent } from "@/components/AccountMenuContent"
+import { IS_DEV } from "@/utils/env"
 
 const navItems = [
   { to: "/dashboard/fuelup", label: "FuelUp", icon: Flame },
@@ -39,7 +40,7 @@ function getSidebarDefault() {
 }
 
 const DashboardLayout = () => {
-  const { isDark } = useConfigContext()
+  const { isDark, devtoolsEnabled, setDevtoolsEnabled } = useConfigContext()
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
@@ -62,7 +63,7 @@ const DashboardLayout = () => {
 
         <SidebarNavContent />
 
-        <SidebarFooterControls />
+        <SidebarFooterControls devtoolsEnabled={devtoolsEnabled} onToggleDevtools={() => setDevtoolsEnabled(prev => !prev)} />
       </Sidebar>
 
       <SidebarInset>
@@ -122,7 +123,13 @@ function SidebarNavContent() {
   )
 }
 
-function SidebarFooterControls() {
+function SidebarFooterControls({
+  devtoolsEnabled,
+  onToggleDevtools,
+}: {
+  devtoolsEnabled: boolean
+  onToggleDevtools: () => void
+}) {
   const { open } = useSidebar()
   const { user } = useAuth()
   const { isDark } = useConfigContext()
@@ -145,6 +152,23 @@ function SidebarFooterControls() {
                   <AccountMenuContent onAction={() => setAccountOpen(false)} />
                 </PopoverContent>
               </Popover>
+            )}
+            {IS_DEV && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`size-9 cursor-pointer ${devtoolsEnabled ? "text-primary" : ""}`}
+                    onClick={onToggleDevtools}
+                  >
+                    <SquareActivity className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side={tooltipSide}>
+                  <p>React Query Devtools</p>
+                </TooltipContent>
+              </Tooltip>
             )}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -181,10 +205,21 @@ function SidebarFooterControls() {
 
 function MobileNavbarControls() {
   const { user } = useAuth()
+  const { devtoolsEnabled, setDevtoolsEnabled } = useConfigContext()
   const [accountOpen, setAccountOpen] = useState(false)
 
   return (
     <div className="ml-auto flex items-center gap-1">
+      {IS_DEV && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`size-9 cursor-pointer ${devtoolsEnabled ? "text-primary" : ""}`}
+          onClick={() => setDevtoolsEnabled(prev => !prev)}
+        >
+          <SquareActivity className="size-4" />
+        </Button>
+      )}
       <ThemeToggle />
       <ColorToggle variant="ghost" size="icon" className="size-9" />
       {user && (

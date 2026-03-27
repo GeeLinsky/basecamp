@@ -1,4 +1,4 @@
-import { useState, useContext, createContext } from "react"
+import { useState, useEffect, useContext, createContext } from "react"
 import type { Dispatch, SetStateAction } from "react"
 
 interface ConfigContextType {
@@ -6,6 +6,8 @@ interface ConfigContextType {
   setIsDark: Dispatch<SetStateAction<boolean>>
   theme: string
   setTheme: Dispatch<SetStateAction<string>>
+  devtoolsEnabled: boolean
+  setDevtoolsEnabled: Dispatch<SetStateAction<boolean>>
 }
 
 const ConfigContext = createContext<ConfigContextType | null>(null)
@@ -28,6 +30,17 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     return true
   })
 
+  const [devtoolsEnabled, setDevtoolsEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("devtoolsEnabled") === "true"
+    }
+    return false
+  })
+
+  useEffect(() => {
+    localStorage.setItem("devtoolsEnabled", String(devtoolsEnabled))
+  }, [devtoolsEnabled])
+
   const [theme, setTheme] = useState(() => {
     const defaultTheme = "theme-solar-dusk"
 
@@ -49,6 +62,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
         setIsDark,
         theme,
         setTheme,
+        devtoolsEnabled,
+        setDevtoolsEnabled,
       }}
     >
       {children}
