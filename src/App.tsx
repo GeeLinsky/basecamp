@@ -3,8 +3,6 @@ import HomePage from "./pages/HomePage"
 import PageNotFoundPage from "./pages/PageNotFoundPage"
 import { useConfigContext } from "./context/ConfigContext"
 import { useEffect } from "react"
-import { logPageView } from "./utils/analytics"
-import { initGA } from "./utils/analytics"
 import ComponentsShowcasePage from "./pages/dashboard/ComponentShowcasePage"
 import { Toaster } from "sonner"
 import DashboardLayout from "./layout/DashboardLayout"
@@ -17,12 +15,7 @@ const App = () => {
   const location = useLocation()
 
   useEffect(() => {
-    initGA()
-  }, [])
-
-  useEffect(() => {
     window.scrollTo(0, 0)
-    logPageView(location.pathname + location.search)
   }, [location.pathname])
 
   useEffect(() => {

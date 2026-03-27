@@ -11,7 +11,6 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["apple-touch-icon.svg"],
       manifest: {
         name: "GeeLinsky Basecamp",
         short_name: "Basecamp",
@@ -23,19 +22,14 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: "pwa-192x192.svg",
-            sizes: "192x192",
-            type: "image/svg+xml",
+            src: "https://statix.geelinsky.com/images/g-key-fill.png",
+            sizes: "512x512",
+            type: "image/png",
           },
           {
-            src: "pwa-512x512.svg",
+            src: "https://statix.geelinsky.com/images/g-key-fill.png",
             sizes: "512x512",
-            type: "image/svg+xml",
-          },
-          {
-            src: "pwa-512x512.svg",
-            sizes: "512x512",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "any maskable",
           },
         ],
