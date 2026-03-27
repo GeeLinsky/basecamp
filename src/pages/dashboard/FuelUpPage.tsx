@@ -27,7 +27,21 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Loader2, Plus, Trash2, Star, ChevronDown, Pencil, GripVertical, CalendarIcon, Info } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Star,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  GripVertical,
+  CalendarIcon,
+  Info,
+  Target,
+} from "lucide-react"
 import {
   DndContext,
   closestCenter,
@@ -59,6 +73,7 @@ import {
   type FoodEntry,
   type FoodFavorite,
 } from "@/hooks/use-fuelup"
+import { useFuelupGoal, useUpsertGoal, type FuelupGoal } from "@/hooks/use-fuelup-goals"
 
 const foodFormSchema = z.object({
   label: z.string().min(1, "Food name is required"),
@@ -157,7 +172,7 @@ function MacroSummary({ fat_g, carbs_g, protein_g }: MacroFields) {
       {totalCal > 0 && (
         <HoverCard openDelay={100} closeDelay={100}>
           <HoverCardTrigger asChild>
-            <button className="inline-flex items-center gap-1 cursor-pointer text-muted-foreground/70 hover:text-muted-foreground text-[11px]">
+            <button className="inline-flex items-center gap-1 text-muted-foreground/70 hover:text-muted-foreground text-[11px]">
               <Info className="h-3 w-3" />
               Macro breakdown
             </button>
@@ -202,6 +217,7 @@ export default function FuelUpPage() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState<FoodFavorite | null>(null)
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null)
+  const [goalsOpen, setGoalsOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -213,6 +229,7 @@ export default function FuelUpPage() {
 
   const { data: entries = [], isLoading } = useFoodEntries(userId, dateStr)
   const { data: favorites = [] } = useFoodFavorites(userId)
+  const { data: goal } = useFuelupGoal(userId, dateStr)
 
   const addEntry = useAddEntry(userId ?? "", dateStr)
   const deleteEntry = useDeleteEntry(userId ?? "", dateStr)
@@ -250,6 +267,7 @@ export default function FuelUpPage() {
     { fat: 0, protein: 0, carbs: 0 },
   )
   const totalCalories = calcCalories(totals.fat, totals.protein, totals.carbs)
+  const goalCalories = goal ? calcCalories(goal.fat_g, goal.protein_g, goal.carbs_g) : 0
 
   const todayStr = formatDate(new Date())
   const isToday = dateStr === todayStr
@@ -261,52 +279,89 @@ export default function FuelUpPage() {
         <p className="text-muted-foreground text-sm mt-1">Track your daily macros.</p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="cursor-pointer">
-                  <CalendarIcon className="h-4 w-4 mr-1.5" />
-                  {isToday
-                    ? "Today"
-                    : selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={date => {
-                    if (date) {
-                      setSelectedDate(date)
-                      setCalendarOpen(false)
-                      setFavoritesOpen(false)
-                    }
-                  }}
-                  disabled={{ after: new Date() }}
-                />
-              </PopoverContent>
-            </Popover>
-            {!isToday && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer"
-                onClick={() => {
-                  setSelectedDate(new Date())
-                  setFavoritesOpen(false)
-                }}
-              >
-                Today
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              const prev = new Date(selectedDate)
+              prev.setDate(prev.getDate() - 1)
+              setSelectedDate(prev)
+              setFavoritesOpen(false)
+            }}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="cursor-pointer">
+                <CalendarIcon className="h-4 w-4 mr-1.5" />
+                {isToday
+                  ? "Today"
+                  : selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </Button>
-            )}
-            {totalCalories > 0 && (
-              <span className="text-sm text-muted-foreground font-medium tabular-nums">
-                {Math.round(totalCalories)} cal
-              </span>
-            )}
-          </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={date => {
+                  if (date) {
+                    setSelectedDate(date)
+                    setCalendarOpen(false)
+                    setFavoritesOpen(false)
+                  }
+                }}
+                disabled={{ after: new Date() }}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            disabled={isToday}
+            onClick={() => {
+              const next = new Date(selectedDate)
+              next.setDate(next.getDate() + 1)
+              setSelectedDate(next)
+              setFavoritesOpen(false)
+            }}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {!isToday && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="cursor-pointer"
+              onClick={() => {
+                setSelectedDate(new Date())
+                setFavoritesOpen(false)
+              }}
+            >
+              Today
+            </Button>
+          )}
+          <div className="flex-1 hidden sm:block" />
+          {isToday && (
+            <Dialog open={goalsOpen} onOpenChange={setGoalsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Target className="h-4 w-4 mr-1" />
+                  Goals
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Daily Goals</DialogTitle>
+                </DialogHeader>
+                <GoalsForm userId={userId ?? ""} currentGoal={goal} onSuccess={() => setGoalsOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          )}
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -330,6 +385,17 @@ export default function FuelUpPage() {
           </Dialog>
         </div>
 
+        {totalCalories > 0 && (
+          <span className="text-sm text-muted-foreground font-medium tabular-nums">
+            {Math.round(totalCalories)}
+            {goalCalories > 0 ? ` / ${goalCalories}` : ""} cal
+          </span>
+        )}
+
+        {goalCalories > 0 && totalCalories > 0 && (
+          <Progress value={Math.min((totalCalories / goalCalories) * 100, 100)} className="h-1.5" />
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MacroCard
             label="Fat"
@@ -337,6 +403,7 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.fat * 9) / totalCalories) * 100) : 0}
             cal={Math.round(totals.fat * 9)}
+            target={goal?.fat_g}
           />
           <MacroCard
             label="Carbs"
@@ -344,6 +411,7 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.carbs * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.carbs * 4)}
+            target={goal?.carbs_g}
           />
           <MacroCard
             label="Protein"
@@ -351,6 +419,7 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.protein * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.protein * 4)}
+            target={goal?.protein_g}
           />
         </div>
 
@@ -610,12 +679,14 @@ function MacroCard({
   unit,
   pct,
   cal,
+  target,
 }: {
   label: string
   value: number
   unit: string
   pct?: number
   cal?: number
+  target?: number
 }) {
   return (
     <Card>
@@ -623,10 +694,19 @@ function MacroCard({
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
         {pct !== undefined && pct > 0 && <p className="text-2xl font-bold text-primary">{pct}%</p>}
         <p className="text-sm text-muted-foreground">
-          {value} {unit}
+          {value}
+          {target !== undefined ? ` / ${target}` : ""} {unit}
           {cal !== undefined && cal > 0 && <span className="mx-1">·</span>}
           {cal !== undefined && cal > 0 && <span>{cal} cal</span>}
         </p>
+        {target !== undefined && target > 0 && (
+          <>
+            <Progress value={Math.min((value / target) * 100, 100)} className="h-1.5 mt-2" />
+            <p className={`text-xs tabular-nums ${value > target ? "text-destructive" : "text-muted-foreground"}`}>
+              {value > target ? `${value - target}g over` : `${target - value}g left`}
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   )
@@ -754,6 +834,108 @@ function FoodForm({
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
         {submitLabel}
+      </Button>
+    </form>
+  )
+}
+
+const goalsSchema = z.object({
+  fat_g: z.number({ error: "Required" }).int().min(0, "Must be 0 or more"),
+  carbs_g: z.number({ error: "Required" }).int().min(0, "Must be 0 or more"),
+  protein_g: z.number({ error: "Required" }).int().min(0, "Must be 0 or more"),
+})
+
+type GoalsFormValues = z.infer<typeof goalsSchema>
+
+function GoalsForm({
+  userId,
+  currentGoal,
+  onSuccess,
+}: {
+  userId: string
+  currentGoal: FuelupGoal | null | undefined
+  onSuccess: () => void
+}) {
+  const upsertGoal = useUpsertGoal(userId)
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isDirty },
+  } = useForm<GoalsFormValues>({
+    resolver: zodResolver(goalsSchema),
+    defaultValues: currentGoal
+      ? { fat_g: currentGoal.fat_g, carbs_g: currentGoal.carbs_g, protein_g: currentGoal.protein_g }
+      : undefined,
+  })
+
+  const fat = watch("fat_g") || 0
+  const carbs = watch("carbs_g") || 0
+  const protein = watch("protein_g") || 0
+  const fatCal = fat * 9
+  const carbsCal = carbs * 4
+  const proteinCal = protein * 4
+  const previewCalories = fatCal + carbsCal + proteinCal
+
+  const onSubmit = (values: GoalsFormValues) => {
+    upsertGoal.mutate(values, { onSuccess })
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="goal-fat">Fat (g)</Label>
+          <Input
+            id="goal-fat"
+            type="number"
+            aria-invalid={!!errors.fat_g}
+            {...register("fat_g", { valueAsNumber: true })}
+          />
+          {errors.fat_g && <p className="text-xs text-destructive">{errors.fat_g.message}</p>}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {Math.round(fatCal)} cal{previewCalories > 0 && ` · ${Math.round((fatCal / previewCalories) * 100)}%`}
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="goal-carbs">Carbs (g)</Label>
+          <Input
+            id="goal-carbs"
+            type="number"
+            aria-invalid={!!errors.carbs_g}
+            {...register("carbs_g", { valueAsNumber: true })}
+          />
+          {errors.carbs_g && <p className="text-xs text-destructive">{errors.carbs_g.message}</p>}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {Math.round(carbsCal)} cal{previewCalories > 0 && ` · ${Math.round((carbsCal / previewCalories) * 100)}%`}
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="goal-protein">Protein (g)</Label>
+          <Input
+            id="goal-protein"
+            type="number"
+            aria-invalid={!!errors.protein_g}
+            {...register("protein_g", { valueAsNumber: true })}
+          />
+          {errors.protein_g && <p className="text-xs text-destructive">{errors.protein_g.message}</p>}
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {Math.round(proteinCal)} cal
+            {previewCalories > 0 && ` · ${Math.round((proteinCal / previewCalories) * 100)}%`}
+          </p>
+        </div>
+      </div>
+
+      {previewCalories > 0 && (
+        <p className="text-sm text-muted-foreground text-center font-medium tabular-nums">
+          {Math.round(previewCalories)} cal
+        </p>
+      )}
+
+      <Button type="submit" className="w-full" disabled={upsertGoal.isPending || !isDirty}>
+        {upsertGoal.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+        {currentGoal ? "Update Goals" : "Set Goals"}
       </Button>
     </form>
   )
