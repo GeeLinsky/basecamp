@@ -37,6 +37,18 @@ const callbackSchema = z
 
 type CallbackValues = z.infer<typeof callbackSchema>
 
+const resetSchema = z
+  .object({
+    password: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  })
+
+type ResetValues = z.infer<typeof resetSchema>
+
 function parseHash() {
   const hash = window.location.hash
   if (!hash) return null
@@ -51,7 +63,7 @@ function parseHash() {
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
   const { refreshAvatar } = useAuth()
-  const [status, setStatus] = useState<"loading" | "set-password" | "error">("loading")
+  const [status, setStatus] = useState<"loading" | "set-password" | "reset-password" | "error">("loading")
   const hashRef = useRef(parseHash())
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -81,8 +93,43 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const parsed = hashRef.current
+    const hasCode = new URL(window.location.href).searchParams.has("code")
+    const isPendingRecovery = localStorage.getItem("pending_password_recovery") === "true"
+    let handled = false
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (handled) return
+
+      // Implicit flow recovery event
+      if (event === "PASSWORD_RECOVERY") {
+        handled = true
+        localStorage.removeItem("pending_password_recovery")
+        setStatus("reset-password")
+        return
+      }
+
+      // PKCE flow: detect recovery via localStorage flag
+      if (event === "SIGNED_IN" && hasCode && session?.user) {
+        handled = true
+        if (isPendingRecovery) {
+          localStorage.removeItem("pending_password_recovery")
+          setStatus("reset-password")
+        } else if (!session.user.user_metadata?.display_name) {
+          setStatus("set-password")
+        } else {
+          navigate("/")
+        }
+      }
+    })
 
     async function handleCallback() {
+      // PKCE flow: the client auto-exchanges the code on init,
+      // so we wait for the onAuthStateChange events above
+      if (hasCode) return
+
+      // Legacy hash flow (fallback)
       if (parsed?.accessToken && parsed?.refreshToken) {
         const { error } = await supabase.auth.setSession({
           access_token: parsed.accessToken,
@@ -94,8 +141,10 @@ export default function AuthCallbackPage() {
           return
         }
 
-        if (parsed.type === "invite" || parsed.type === "recovery") {
+        if (parsed.type === "invite") {
           setStatus("set-password")
+        } else if (parsed.type === "recovery") {
+          setStatus("reset-password")
         } else {
           navigate("/")
         }
@@ -113,6 +162,8 @@ export default function AuthCallbackPage() {
     }
 
     handleCallback()
+
+    return () => subscription.unsubscribe()
   }, [navigate])
 
   const onSubmit = async (values: CallbackValues) => {
@@ -170,6 +221,10 @@ export default function AuthCallbackPage() {
         </Card>
       </main>
     )
+  }
+
+  if (status === "reset-password") {
+    return <ResetPasswordForm />
   }
 
   return (
@@ -232,6 +287,77 @@ export default function AuthCallbackPage() {
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Get Started
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
+
+function ResetPasswordForm() {
+  const navigate = useNavigate()
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<ResetValues>({
+    resolver: zodResolver(resetSchema),
+  })
+
+  const password = watch("password", "")
+
+  const onSubmit = async (values: ResetValues) => {
+    const { error } = await supabase.auth.updateUser({
+      password: values.password,
+    })
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    toast.success("Password updated!")
+    navigate("/")
+  }
+
+  return (
+    <main className="flex items-center justify-center min-h-screen p-4">
+      <Card className="w-full max-w-sm">
+        <CardContent className="p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold">Reset Password</h1>
+            <p className="text-sm text-muted-foreground mt-1">Choose a new password for your account.</p>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-password">New Password</Label>
+              <Input
+                id="reset-password"
+                type="password"
+                aria-invalid={!!errors.password}
+                {...register("password")}
+              />
+              <PasswordRequirements password={password} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reset-confirm">Confirm Password</Label>
+              <Input
+                id="reset-confirm"
+                type="password"
+                aria-invalid={!!errors.confirmPassword}
+                {...register("confirmPassword")}
+              />
+              {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Update Password
             </Button>
           </form>
         </CardContent>

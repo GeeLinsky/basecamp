@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Loader2, Upload, Trash2 } from "lucide-react"
+import { Loader2, Upload, Trash2, Check } from "lucide-react"
 import { UserAvatar } from "@/components/UserAvatar"
 import { validateImageFile } from "@/utils/validate-image"
 import { toast } from "sonner"
@@ -22,6 +22,24 @@ const nameSchema = z.object({
 })
 
 type NameValues = z.infer<typeof nameSchema>
+
+const passwordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[a-z]/, "Must include a lowercase letter")
+      .regex(/[A-Z]/, "Must include an uppercase letter")
+      .regex(/[0-9]/, "Must include a digit")
+      .regex(/[^a-zA-Z0-9]/, "Must include a symbol"),
+    confirmPassword: z.string(),
+  })
+  .refine(data => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  })
+
+type PasswordValues = z.infer<typeof passwordSchema>
 
 export default function SettingsPage() {
   const { user, avatarUrl, refreshAvatar } = useAuth()
@@ -167,6 +185,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <ChangePasswordCard />
+
       <Separator />
 
       <Card>
@@ -179,5 +199,84 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+const passwordRules = [
+  { test: (p: string) => p.length >= 8, label: "8+ characters" },
+  { test: (p: string) => /[a-z]/.test(p), label: "Lowercase letter" },
+  { test: (p: string) => /[A-Z]/.test(p), label: "Uppercase letter" },
+  { test: (p: string) => /[0-9]/.test(p), label: "Digit" },
+  { test: (p: string) => /[^a-zA-Z0-9]/.test(p), label: "Symbol" },
+]
+
+function ChangePasswordCard() {
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<PasswordValues>({
+    resolver: zodResolver(passwordSchema),
+  })
+
+  const password = watch("password", "")
+
+  const onSubmit = async (values: PasswordValues) => {
+    const { error } = await supabase.auth.updateUser({
+      password: values.password,
+    })
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success("Password updated")
+      reset()
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Password</CardTitle>
+        <CardDescription>Update your account password.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="new-password">New Password</Label>
+            <Input id="new-password" type="password" aria-invalid={!!errors.password} {...register("password")} />
+            <ul className="space-y-1 mt-1">
+              {passwordRules.map(({ test, label }) => {
+                const met = test(password)
+                return (
+                  <li key={label} className="flex items-center gap-1.5 text-xs">
+                    <Check className={`size-3 ${met ? "text-green-500" : "text-muted-foreground/40"}`} />
+                    <span className={met ? "text-green-500" : "text-muted-foreground"}>{label}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              aria-invalid={!!errors.confirmPassword}
+              {...register("confirmPassword")}
+            />
+            {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>}
+          </div>
+
+          <Button type="submit" disabled={isSubmitting} size="sm">
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            Update Password
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

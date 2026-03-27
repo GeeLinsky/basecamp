@@ -374,6 +374,16 @@ const signInSchema = z.object({
 type SignInValues = z.infer<typeof signInSchema>
 
 function SignInForm({ onSuccess }: { onSuccess: () => void }) {
+  const [mode, setMode] = useState<"sign-in" | "forgot">("sign-in")
+
+  if (mode === "forgot") {
+    return <ForgotPasswordForm onBack={() => setMode("sign-in")} />
+  }
+
+  return <SignInFields onSuccess={onSuccess} onForgot={() => setMode("forgot")} />
+}
+
+function SignInFields({ onSuccess, onForgot }: { onSuccess: () => void; onForgot: () => void }) {
   const {
     register,
     handleSubmit,
@@ -400,7 +410,16 @@ function SignInForm({ onSuccess }: { onSuccess: () => void }) {
         {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="sign-in-password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="sign-in-password">Password</Label>
+          <button
+            type="button"
+            onClick={onForgot}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            Forgot password?
+          </button>
+        </div>
         <Input id="sign-in-password" type="password" aria-invalid={!!errors.password} {...register("password")} />
         {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
       </div>
@@ -408,6 +427,72 @@ function SignInForm({ onSuccess }: { onSuccess: () => void }) {
         {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
         Sign In
       </Button>
+    </form>
+  )
+}
+
+const forgotSchema = z.object({
+  email: z.string().email("Invalid email"),
+})
+
+type ForgotValues = z.infer<typeof forgotSchema>
+
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const [sent, setSent] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ForgotValues>({
+    resolver: zodResolver(forgotSchema),
+  })
+
+  const onSubmit = async (values: ForgotValues) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    })
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      localStorage.setItem("pending_password_recovery", "true")
+      setSent(true)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="mt-3 space-y-3 text-center">
+        <p className="text-sm">Check your email for a password reset link.</p>
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          Back to sign in
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="forgot-email">Email</Label>
+        <Input id="forgot-email" type="email" aria-invalid={!!errors.email} {...register("email")} />
+        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+      </div>
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+        Send Reset Link
+      </Button>
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      >
+        Back to sign in
+      </button>
     </form>
   )
 }
