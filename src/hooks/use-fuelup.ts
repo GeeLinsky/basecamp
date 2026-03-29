@@ -221,6 +221,30 @@ export function useSaveAsFavorite(userId: string) {
   })
 }
 
+export function useCreateFavorite(userId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (values: FoodMutationPayload & { sort_order: number }) => {
+      const { error } = await supabase.from("food_favorites").insert({
+        user_id: userId,
+        label: values.label,
+        description: values.description,
+        fat_g: values.fat_g,
+        protein_g: values.protein_g,
+        carbs_g: values.carbs_g,
+        sort_order: values.sort_order,
+      })
+      if (error) throw error
+    },
+    onSuccess: (_, values) => {
+      queryClient.invalidateQueries({ queryKey: favoriteKeys.byUser(userId) })
+      toast.success(`"${values.label}" saved as favorite`)
+    },
+    onError: () => toast.error("Failed to create favorite"),
+  })
+}
+
 export function useDeleteFavorite(userId: string) {
   const queryClient = useQueryClient()
 

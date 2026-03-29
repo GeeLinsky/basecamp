@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
 import { Helmet } from "react-helmet-async"
+import { Link } from "react-router-dom"
 import { useQueryState, parseAsString } from "nuqs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -40,6 +41,7 @@ import {
   CalendarIcon,
   Info,
   Scale,
+  BarChart3,
 } from "lucide-react"
 import {
   DndContext,
@@ -70,6 +72,7 @@ import {
   useDeleteFavorite,
   useReorderFavorites,
   useUpdateFavorite,
+  useCreateFavorite,
   type FoodEntry,
   type FoodFavorite,
 } from "@/hooks/use-fuelup"
@@ -227,6 +230,7 @@ export default function FuelUpPage() {
   const [editingFavorite, setEditingFavorite] = useState<FoodFavorite | null>(null)
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null)
   const [weightOpen, setWeightOpen] = useState(false)
+  const [createFavoriteOpen, setCreateFavoriteOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -248,6 +252,7 @@ export default function FuelUpPage() {
   const deleteFavorite = useDeleteFavorite(userId ?? "")
   const reorderFavorites = useReorderFavorites(userId ?? "")
   const updateFavorite = useUpdateFavorite(userId ?? "")
+  const createFavorite = useCreateFavorite(userId ?? "")
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -307,9 +312,17 @@ export default function FuelUpPage() {
         <title>FuelUp | GeeLinsky</title>
         <meta name="description" content="Track your daily macros and nutrition." />
       </Helmet>
-      <div>
-        <h1 className="text-2xl font-bold">FuelUp</h1>
-        <p className="text-muted-foreground text-sm mt-1">Track your daily macros.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">FuelUp</h1>
+          <p className="text-muted-foreground text-sm mt-1">Track your daily macros.</p>
+        </div>
+        <Link to="/dashboard/fuelup/stats">
+          <Button variant="outline" size="sm" className="cursor-pointer">
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Stats
+          </Button>
+        </Link>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -450,7 +463,11 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.fat * 9) / totalCalories) * 100) : 0}
             cal={Math.round(totals.fat * 9)}
-            target={fatTarget ? `Target: ${fatTarget.low}–${fatTarget.high}g (${FAT_PER_LB.low}–${FAT_PER_LB.high}g/lb)` : undefined}
+            target={
+              fatTarget
+                ? `Target: ${fatTarget.low}–${fatTarget.high}g (${FAT_PER_LB.low}–${FAT_PER_LB.high}g/lb)`
+                : undefined
+            }
             range={fatTarget}
           />
           <MacroCard
@@ -468,7 +485,11 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.protein * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.protein * 4)}
-            target={proteinTarget ? `Target: ${proteinTarget.low}–${proteinTarget.high}g (${PROTEIN_PER_LB.low}–${PROTEIN_PER_LB.high}g/lb)` : undefined}
+            target={
+              proteinTarget
+                ? `Target: ${proteinTarget.low}–${proteinTarget.high}g (${PROTEIN_PER_LB.low}–${PROTEIN_PER_LB.high}g/lb)`
+                : undefined
+            }
             range={proteinTarget}
           />
         </div>
@@ -482,15 +503,15 @@ export default function FuelUpPage() {
           </button>
         )}
 
-        {favorites.length > 0 && (
-          <Collapsible open={favoritesOpen} onOpenChange={setFavoritesOpen}>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="w-full justify-between">
-                <span className="text-xs text-muted-foreground">Favorites ({favorites.length})</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${favoritesOpen ? "rotate-180" : ""}`} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-1.5 pt-2">
+        <Collapsible open={favoritesOpen} onOpenChange={setFavoritesOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full justify-between">
+              <span className="text-xs text-muted-foreground">Favorites ({favorites.length})</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${favoritesOpen ? "rotate-180" : ""}`} />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-1.5 pt-2">
+            {favorites.length > 0 && (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFavoriteDragEnd}>
                 <SortableContext items={favorites.map(f => f.id)} strategy={verticalListSortingStrategy}>
                   {favorites.map(favorite => (
@@ -504,29 +525,53 @@ export default function FuelUpPage() {
                   ))}
                 </SortableContext>
               </DndContext>
-            </CollapsibleContent>
-
-            <Dialog open={!!editingFavorite} onOpenChange={open => !open && setEditingFavorite(null)}>
+            )}
+            <Dialog open={createFavoriteOpen} onOpenChange={setCreateFavoriteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full cursor-pointer">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Create Favorite
+                </Button>
+              </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Edit Favorite</DialogTitle>
+                  <DialogTitle>Create Favorite</DialogTitle>
                 </DialogHeader>
-                {editingFavorite && (
-                  <FoodForm
-                    defaultValues={toFormValues(editingFavorite)}
-                    onSubmit={updates => {
-                      updateFavorite.mutate(
-                        { id: editingFavorite.id, updates },
-                        { onSuccess: () => setEditingFavorite(null) },
-                      )
-                    }}
-                    submitLabel="Save Changes"
-                  />
-                )}
+                <FoodForm
+                  onSubmit={values => {
+                    const nextOrder = favorites.length > 0 ? Math.max(...favorites.map(f => f.sort_order)) + 1 : 0
+                    createFavorite.mutate(
+                      { ...values, sort_order: nextOrder },
+                      { onSuccess: () => setCreateFavoriteOpen(false) },
+                    )
+                  }}
+                  submitLabel="Create Favorite"
+                  isPending={createFavorite.isPending}
+                />
               </DialogContent>
             </Dialog>
-          </Collapsible>
-        )}
+          </CollapsibleContent>
+
+          <Dialog open={!!editingFavorite} onOpenChange={open => !open && setEditingFavorite(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Favorite</DialogTitle>
+              </DialogHeader>
+              {editingFavorite && (
+                <FoodForm
+                  defaultValues={toFormValues(editingFavorite)}
+                  onSubmit={updates => {
+                    updateFavorite.mutate(
+                      { id: editingFavorite.id, updates },
+                      { onSuccess: () => setEditingFavorite(null) },
+                    )
+                  }}
+                  submitLabel="Save Changes"
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+        </Collapsible>
 
         <Separator />
 
@@ -844,9 +889,7 @@ function MacroCard({
           {cal !== undefined && cal > 0 && <span className="mx-1">·</span>}
           {cal !== undefined && cal > 0 && <span>{cal} cal</span>}
         </p>
-        {target && (
-            <p className="text-xs text-muted-foreground/70 pt-0.5">{target}</p>
-        )}
+        {target && <p className="text-xs text-muted-foreground/70 pt-0.5">{target}</p>}
         {notes && notes.length > 0 && (
           <div className="text-[11px] text-muted-foreground/70 space-y-0.5 pt-0.5">
             {notes.map((note, i) => (

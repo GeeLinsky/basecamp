@@ -88,7 +88,7 @@ export default function ThemeSelector({ triggerVariant = "ghost", triggerClassNa
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger>
+      <PopoverTrigger asChild>
         <Button variant={triggerVariant} size="icon" className={triggerClassName}>
           <Palette />
         </Button>

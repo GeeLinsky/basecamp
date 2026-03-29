@@ -85,6 +85,11 @@ export default function SettingsPage() {
 
     setUploading(true)
     try {
+      const { data: existing } = await supabase.storage.from("avatars").list(user.id)
+      if (existing?.length) {
+        await supabase.storage.from("avatars").remove(existing.map(f => `${user.id}/${f.name}`))
+      }
+
       const ext = file.name.split(".").pop()
       const filePath = `${user.id}/avatar.${ext}`
 
