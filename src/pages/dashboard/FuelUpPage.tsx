@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Progress } from "@/components/ui/progress"
 import {
   Loader2,
   Plus,
@@ -40,7 +39,7 @@ import {
   GripVertical,
   CalendarIcon,
   Info,
-  Target,
+  Scale,
 } from "lucide-react"
 import {
   DndContext,
@@ -74,7 +73,10 @@ import {
   type FoodEntry,
   type FoodFavorite,
 } from "@/hooks/use-fuelup"
-import { useFuelupGoal, useUpsertGoal, type FuelupGoal } from "@/hooks/use-fuelup-goals"
+import { useFuelupWeight, useWeightHistory, useUpsertWeight } from "@/hooks/use-fuelup-weight"
+
+const FAT_PER_LB = { low: 0.3, high: 0.4 } as const
+const PROTEIN_PER_LB = { low: 0.8, high: 1.0 } as const
 
 const foodFormSchema = z.object({
   label: z.string().min(1, "Food name is required"),
@@ -136,6 +138,12 @@ function formatDate(date: Date) {
   const m = String(date.getMonth() + 1).padStart(2, "0")
   const d = String(date.getDate()).padStart(2, "0")
   return `${y}-${m}-${d}`
+}
+
+function formatWeightDate(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 function ItemDescription({ text }: { text: string }) {
@@ -218,7 +226,7 @@ export default function FuelUpPage() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [editingFavorite, setEditingFavorite] = useState<FoodFavorite | null>(null)
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null)
-  const [goalsOpen, setGoalsOpen] = useState(false)
+  const [weightOpen, setWeightOpen] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -230,8 +238,7 @@ export default function FuelUpPage() {
 
   const { data: entries = [], isLoading } = useFoodEntries(userId, dateStr)
   const { data: favorites = [] } = useFoodFavorites(userId)
-  const { data: goal } = useFuelupGoal(userId, dateStr)
-
+  const { data: weight } = useFuelupWeight(userId, dateStr)
   const addEntry = useAddEntry(userId ?? "", dateStr)
   const deleteEntry = useDeleteEntry(userId ?? "", dateStr)
   const updateEntry = useUpdateEntry(userId ?? "", dateStr)
@@ -280,7 +287,9 @@ export default function FuelUpPage() {
     { fat: 0, protein: 0, carbs: 0 },
   )
   const totalCalories = calcCalories(totals.fat, totals.protein, totals.carbs)
-  const goalCalories = goal ? calcCalories(goal.fat_g, goal.protein_g, goal.carbs_g) : 0
+
+  const fatTarget = weight ? { low: Math.round(weight.weight_lbs * FAT_PER_LB.low), high: Math.round(weight.weight_lbs * FAT_PER_LB.high) } : null
+  const proteinTarget = weight ? { low: Math.round(weight.weight_lbs * PROTEIN_PER_LB.low), high: Math.round(weight.weight_lbs * PROTEIN_PER_LB.high) } : null
 
   const todayStr = formatDate(new Date())
   const isToday = dateStr === todayStr
@@ -363,22 +372,27 @@ export default function FuelUpPage() {
             </Button>
           )}
           <div className="flex-1 hidden sm:block" />
-          {isToday && (
-            <Dialog open={goalsOpen} onOpenChange={setGoalsOpen}>
+          {isToday ? (
+            <Dialog open={weightOpen} onOpenChange={setWeightOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Target className="h-4 w-4 mr-1" />
-                  Goals
+                <Button variant="outline" size="sm" className="cursor-pointer">
+                  <Scale className="h-4 w-4 mr-1" />
+                  {weight ? <>{weight.weight_lbs} lbs <span className="text-muted-foreground font-normal ml-0.5">({formatWeightDate(weight.effective_date)})</span></> : "Log Weight"}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Daily Goals</DialogTitle>
+                  <DialogTitle>Log Weight</DialogTitle>
                 </DialogHeader>
-                <GoalsForm userId={userId ?? ""} currentGoal={goal} onSuccess={() => setGoalsOpen(false)} />
+                <WeightForm userId={userId ?? ""} currentWeight={weight?.weight_lbs} onSuccess={() => setWeightOpen(false)} />
               </DialogContent>
             </Dialog>
-          )}
+          ) : weight ? (
+            <Button variant="outline" size="sm" disabled>
+              <Scale className="h-4 w-4 mr-1" />
+              {weight.weight_lbs} lbs <span className="text-muted-foreground font-normal ml-0.5">({formatWeightDate(weight.effective_date)})</span>
+            </Button>
+          ) : null}
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
@@ -403,14 +417,9 @@ export default function FuelUpPage() {
         </div>
 
         {totalCalories > 0 && (
-          <span className="text-sm text-muted-foreground font-medium tabular-nums">
-            {Math.round(totalCalories)}
-            {goalCalories > 0 ? ` / ${goalCalories}` : ""} cal
-          </span>
-        )}
-
-        {goalCalories > 0 && totalCalories > 0 && (
-          <Progress value={Math.min((totalCalories / goalCalories) * 100, 100)} className="h-1.5" />
+          <p className="text-2xl font-bold tabular-nums">
+            {Math.round(totalCalories)} <span className="text-base font-medium text-muted-foreground">cal</span>
+          </p>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -420,7 +429,9 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.fat * 9) / totalCalories) * 100) : 0}
             cal={Math.round(totals.fat * 9)}
-            target={goal?.fat_g}
+            target={fatTarget ? `${fatTarget.low}–${fatTarget.high}g` : undefined}
+            range={fatTarget}
+            tip={weight ? { goal: "Hormones + overall health", note: `${FAT_PER_LB.low}–${FAT_PER_LB.high}g per lb bodyweight\nDon't go too low` } : undefined}
           />
           <MacroCard
             label="Carbs"
@@ -428,7 +439,11 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.carbs * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.carbs * 4)}
-            target={goal?.carbs_g}
+            target={weight ? "Fill in the rest" : undefined}
+            tip={weight ? {
+              goal: "Energy + workout performance",
+              note: "More energy needed \u2192 increase\nFat loss \u2192 decrease a bit",
+            } : undefined}
           />
           <MacroCard
             label="Protein"
@@ -436,9 +451,20 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.protein * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.protein * 4)}
-            target={goal?.protein_g}
+            target={proteinTarget ? `${proteinTarget.low}–${proteinTarget.high}g` : undefined}
+            range={proteinTarget}
+            tip={weight ? { goal: "Build/keep muscle + recover", note: `${PROTEIN_PER_LB.low}–${PROTEIN_PER_LB.high}g per lb bodyweight\nMost important\u2014hit this daily` } : undefined}
           />
         </div>
+
+        {!weight && isToday && (
+          <button
+            className="text-xs text-muted-foreground/70 hover:text-muted-foreground cursor-pointer transition-colors"
+            onClick={() => setWeightOpen(true)}
+          >
+            Log your weight to see macro targets
+          </button>
+        )}
 
         {favorites.length > 0 && (
           <Collapsible open={favoritesOpen} onOpenChange={setFavoritesOpen}>
@@ -734,6 +760,57 @@ function SortableFavorite({
   )
 }
 
+function RangeBar({
+  value,
+  low,
+  high,
+}: {
+  value: number
+  low: number
+  high: number
+}) {
+  const max = high * 1.2
+  const fillPct = Math.min((value / max) * 100, 100)
+  const lowPct = (low / max) * 100
+  const highPct = (high / max) * 100
+  const inRange = value >= low && value <= high
+  const over = value > high
+
+  const remaining = low - value
+  const overBy = value - high
+  const headroom = high - value
+  const statusText = over ? `${overBy}g over` : inRange ? `${headroom}g to spare` : `${remaining}g to go`
+
+  return (
+    <div className="space-y-1 mt-2">
+    <div className="relative w-full h-2">
+      <div className="absolute inset-0 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-emerald-600/20"
+        style={{ left: `${lowPct}%`, width: `${highPct - lowPct}%` }}
+      />
+      <div
+        className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+          over ? "bg-red-500" : inRange ? "bg-emerald-600" : "bg-blue-500"
+        }`}
+        style={{ width: `${fillPct}%` }}
+      />
+      <div
+        className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full"
+        style={{ left: `${lowPct}%` }}
+      />
+      <div
+        className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full"
+        style={{ left: `${highPct}%` }}
+      />
+    </div>
+    <p className={`text-[11px] tabular-nums text-center ${over ? "text-red-500" : inRange ? "text-emerald-600" : "text-blue-500"}`}>
+      {statusText}
+    </p>
+    </div>
+  )
+}
+
 function MacroCard({
   label,
   value,
@@ -741,13 +818,17 @@ function MacroCard({
   pct,
   cal,
   target,
+  range,
+  tip,
 }: {
   label: string
   value: number
   unit: string
   pct?: number
   cal?: number
-  target?: number
+  target?: string
+  range?: { low: number; high: number } | null
+  tip?: { goal: string; note: string }
 }) {
   return (
     <Card>
@@ -755,18 +836,37 @@ function MacroCard({
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
         {pct !== undefined && pct > 0 && <p className="text-2xl font-bold text-primary">{pct}%</p>}
         <p className="text-sm text-muted-foreground">
-          {value}
-          {target !== undefined ? ` / ${target}` : ""} {unit}
+          {value} {unit}
           {cal !== undefined && cal > 0 && <span className="mx-1">·</span>}
           {cal !== undefined && cal > 0 && <span>{cal} cal</span>}
         </p>
-        {target !== undefined && target > 0 && (
-          <>
-            <Progress value={Math.min((value / target) * 100, 100)} className="h-1.5 mt-2" />
-            <p className={`text-xs tabular-nums ${value > target ? "text-destructive" : "text-muted-foreground"}`}>
-              {value > target ? `${value - target}g over` : `${target - value}g left`}
-            </p>
-          </>
+        {target && (
+          <div className="flex items-center justify-center gap-1 pt-0.5">
+            <p className="text-xs text-muted-foreground/70">Target: {target}</p>
+            {tip && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
+                    <Info className="h-3 w-3" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" className="w-auto max-w-56 text-xs p-3 space-y-1.5">
+                  <p className="font-medium">{tip.goal}</p>
+                  <ul className="text-muted-foreground space-y-0.5">
+                    {tip.note.split("\n").map((line, i) => (
+                      <li key={i} className="flex gap-1.5">
+                        <span className="shrink-0">•</span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        )}
+        {range && range.low > 0 && (
+          <RangeBar value={value} low={range.low} high={range.high} />
         )}
       </CardContent>
     </Card>
@@ -900,104 +1000,70 @@ function FoodForm({
   )
 }
 
-const goalsSchema = z.object({
-  fat_g: z.number({ error: "Required" }).int().min(0, "Must be 0 or more"),
-  carbs_g: z.number({ error: "Required" }).int().min(0, "Must be 0 or more"),
-  protein_g: z.number({ error: "Required" }).int().min(0, "Must be 0 or more"),
+const weightSchema = z.object({
+  weight_lbs: z.number({ error: "Required" }).positive("Must be greater than 0"),
 })
 
-type GoalsFormValues = z.infer<typeof goalsSchema>
-
-function GoalsForm({
+function WeightForm({
   userId,
-  currentGoal,
+  currentWeight,
   onSuccess,
 }: {
   userId: string
-  currentGoal: FuelupGoal | null | undefined
+  currentWeight: number | undefined
   onSuccess: () => void
 }) {
-  const upsertGoal = useUpsertGoal(userId)
-
+  const upsertWeight = useUpsertWeight(userId)
+  const { data: history = [] } = useWeightHistory(userId || undefined)
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isDirty },
-  } = useForm<GoalsFormValues>({
-    resolver: zodResolver(goalsSchema),
-    defaultValues: currentGoal
-      ? { fat_g: currentGoal.fat_g, carbs_g: currentGoal.carbs_g, protein_g: currentGoal.protein_g }
-      : undefined,
+  } = useForm<{ weight_lbs: number }>({
+    resolver: zodResolver(weightSchema),
+    defaultValues: currentWeight ? { weight_lbs: currentWeight } : undefined,
   })
 
-  const fat = watch("fat_g") || 0
-  const carbs = watch("carbs_g") || 0
-  const protein = watch("protein_g") || 0
-  const fatCal = fat * 9
-  const carbsCal = carbs * 4
-  const proteinCal = protein * 4
-  const previewCalories = fatCal + carbsCal + proteinCal
-
-  const onSubmit = (values: GoalsFormValues) => {
-    upsertGoal.mutate(values, { onSuccess })
+  const onSubmit = (values: { weight_lbs: number }) => {
+    upsertWeight.mutate(values.weight_lbs, { onSuccess })
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+    <div className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="goal-fat">Fat (g)</Label>
+          <Label htmlFor="weight-lbs">Weight (lbs)</Label>
           <Input
-            id="goal-fat"
+            id="weight-lbs"
             type="number"
-            aria-invalid={!!errors.fat_g}
-            {...register("fat_g", { valueAsNumber: true })}
+            min="0"
+            step="0.1"
+            aria-invalid={!!errors.weight_lbs}
+            {...register("weight_lbs", { valueAsNumber: true })}
           />
-          {errors.fat_g && <p className="text-xs text-destructive">{errors.fat_g.message}</p>}
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {Math.round(fatCal)} cal{previewCalories > 0 && ` · ${Math.round((fatCal / previewCalories) * 100)}%`}
-          </p>
+          {errors.weight_lbs && <p className="text-xs text-destructive">{errors.weight_lbs.message}</p>}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="goal-carbs">Carbs (g)</Label>
-          <Input
-            id="goal-carbs"
-            type="number"
-            aria-invalid={!!errors.carbs_g}
-            {...register("carbs_g", { valueAsNumber: true })}
-          />
-          {errors.carbs_g && <p className="text-xs text-destructive">{errors.carbs_g.message}</p>}
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {Math.round(carbsCal)} cal{previewCalories > 0 && ` · ${Math.round((carbsCal / previewCalories) * 100)}%`}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="goal-protein">Protein (g)</Label>
-          <Input
-            id="goal-protein"
-            type="number"
-            aria-invalid={!!errors.protein_g}
-            {...register("protein_g", { valueAsNumber: true })}
-          />
-          {errors.protein_g && <p className="text-xs text-destructive">{errors.protein_g.message}</p>}
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {Math.round(proteinCal)} cal
-            {previewCalories > 0 && ` · ${Math.round((proteinCal / previewCalories) * 100)}%`}
-          </p>
-        </div>
-      </div>
+        <Button type="submit" className="w-full" disabled={upsertWeight.isPending || !isDirty}>
+          {upsertWeight.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {currentWeight ? "Update Weight" : "Log Weight"}
+        </Button>
+      </form>
 
-      {previewCalories > 0 && (
-        <p className="text-sm text-muted-foreground text-center font-medium tabular-nums">
-          {Math.round(previewCalories)} cal
-        </p>
+      {history.length > 0 && (
+        <div className="space-y-2">
+          <Separator />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">History</p>
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {history.map(entry => (
+              <div key={entry.id} className="flex items-center justify-between text-sm py-1">
+                <span className="text-muted-foreground">{formatWeightDate(entry.effective_date)}</span>
+                <span className="tabular-nums">{entry.weight_lbs} lbs</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-
-      <Button type="submit" className="w-full" disabled={upsertGoal.isPending || !isDirty}>
-        {upsertGoal.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-        {currentGoal ? "Update Goals" : "Set Goals"}
-      </Button>
-    </form>
+    </div>
   )
 }
+
