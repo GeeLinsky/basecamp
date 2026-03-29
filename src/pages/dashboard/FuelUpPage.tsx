@@ -288,8 +288,15 @@ export default function FuelUpPage() {
   )
   const totalCalories = calcCalories(totals.fat, totals.protein, totals.carbs)
 
-  const fatTarget = weight ? { low: Math.round(weight.weight_lbs * FAT_PER_LB.low), high: Math.round(weight.weight_lbs * FAT_PER_LB.high) } : null
-  const proteinTarget = weight ? { low: Math.round(weight.weight_lbs * PROTEIN_PER_LB.low), high: Math.round(weight.weight_lbs * PROTEIN_PER_LB.high) } : null
+  const fatTarget = weight
+    ? { low: Math.round(weight.weight_lbs * FAT_PER_LB.low), high: Math.round(weight.weight_lbs * FAT_PER_LB.high) }
+    : null
+  const proteinTarget = weight
+    ? {
+        low: Math.round(weight.weight_lbs * PROTEIN_PER_LB.low),
+        high: Math.round(weight.weight_lbs * PROTEIN_PER_LB.high),
+      }
+    : null
 
   const todayStr = formatDate(new Date())
   const isToday = dateStr === todayStr
@@ -324,9 +331,7 @@ export default function FuelUpPage() {
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="cursor-pointer">
                 <CalendarIcon className="h-4 w-4 mr-1.5" />
-                {isToday
-                  ? "Today"
-                  : selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                {isToday ? "Today" : selectedDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -377,20 +382,36 @@ export default function FuelUpPage() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="cursor-pointer">
                   <Scale className="h-4 w-4 mr-1" />
-                  {weight ? <>{weight.weight_lbs} lbs <span className="text-muted-foreground font-normal ml-0.5">({formatWeightDate(weight.effective_date)})</span></> : "Log Weight"}
+                  {weight ? (
+                    <>
+                      {weight.weight_lbs} lbs{" "}
+                      <span className="text-muted-foreground font-normal ml-0.5">
+                        ({formatWeightDate(weight.effective_date)})
+                      </span>
+                    </>
+                  ) : (
+                    "Log Weight"
+                  )}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Log Weight</DialogTitle>
                 </DialogHeader>
-                <WeightForm userId={userId ?? ""} currentWeight={weight?.weight_lbs} onSuccess={() => setWeightOpen(false)} />
+                <WeightForm
+                  userId={userId ?? ""}
+                  currentWeight={weight?.weight_lbs}
+                  onSuccess={() => setWeightOpen(false)}
+                />
               </DialogContent>
             </Dialog>
           ) : weight ? (
             <Button variant="outline" size="sm" disabled>
               <Scale className="h-4 w-4 mr-1" />
-              {weight.weight_lbs} lbs <span className="text-muted-foreground font-normal ml-0.5">({formatWeightDate(weight.effective_date)})</span>
+              {weight.weight_lbs} lbs{" "}
+              <span className="text-muted-foreground font-normal ml-0.5">
+                ({formatWeightDate(weight.effective_date)})
+              </span>
             </Button>
           ) : null}
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -429,9 +450,8 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.fat * 9) / totalCalories) * 100) : 0}
             cal={Math.round(totals.fat * 9)}
-            target={fatTarget ? `${fatTarget.low}–${fatTarget.high}g` : undefined}
+            target={fatTarget ? `Target: ${fatTarget.low}–${fatTarget.high}g (${FAT_PER_LB.low}–${FAT_PER_LB.high}g/lb)` : undefined}
             range={fatTarget}
-            tip={weight ? { goal: "Hormones + overall health", note: `${FAT_PER_LB.low}–${FAT_PER_LB.high}g per lb bodyweight\nDon't go too low` } : undefined}
           />
           <MacroCard
             label="Carbs"
@@ -439,11 +459,8 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.carbs * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.carbs * 4)}
-            target={weight ? "Fill in the rest" : undefined}
-            tip={weight ? {
-              goal: "Energy + workout performance",
-              note: "More energy needed \u2192 increase\nFat loss \u2192 decrease a bit",
-            } : undefined}
+            target={weight ? "Flexible — scale with activity" : undefined}
+            notes={weight ? ["More activity \u2192 more carbs", "Fat loss \u2192 fewer carbs"] : undefined}
           />
           <MacroCard
             label="Protein"
@@ -451,9 +468,8 @@ export default function FuelUpPage() {
             unit="g"
             pct={totalCalories > 0 ? Math.round(((totals.protein * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.protein * 4)}
-            target={proteinTarget ? `${proteinTarget.low}–${proteinTarget.high}g` : undefined}
+            target={proteinTarget ? `Target: ${proteinTarget.low}–${proteinTarget.high}g (${PROTEIN_PER_LB.low}–${PROTEIN_PER_LB.high}g/lb)` : undefined}
             range={proteinTarget}
-            tip={weight ? { goal: "Build/keep muscle + recover", note: `${PROTEIN_PER_LB.low}–${PROTEIN_PER_LB.high}g per lb bodyweight\nMost important\u2014hit this daily` } : undefined}
           />
         </div>
 
@@ -760,15 +776,7 @@ function SortableFavorite({
   )
 }
 
-function RangeBar({
-  value,
-  low,
-  high,
-}: {
-  value: number
-  low: number
-  high: number
-}) {
+function RangeBar({ value, low, high }: { value: number; low: number; high: number }) {
   const max = high * 1.2
   const fillPct = Math.min((value / max) * 100, 100)
   const lowPct = (low / max) * 100
@@ -783,30 +791,26 @@ function RangeBar({
 
   return (
     <div className="space-y-1 mt-2">
-    <div className="relative w-full h-2">
-      <div className="absolute inset-0 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-      <div
-        className="absolute inset-y-0 left-0 rounded-full bg-emerald-600/20"
-        style={{ left: `${lowPct}%`, width: `${highPct - lowPct}%` }}
-      />
-      <div
-        className={`absolute inset-y-0 left-0 rounded-full transition-all ${
-          over ? "bg-red-500" : inRange ? "bg-emerald-600" : "bg-blue-500"
-        }`}
-        style={{ width: `${fillPct}%` }}
-      />
-      <div
-        className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full"
-        style={{ left: `${lowPct}%` }}
-      />
-      <div
-        className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full"
-        style={{ left: `${highPct}%` }}
-      />
-    </div>
-    <p className={`text-[11px] tabular-nums text-center ${over ? "text-red-500" : inRange ? "text-emerald-600" : "text-blue-500"}`}>
-      {statusText}
-    </p>
+      <div className="relative w-full h-2">
+        <div className="absolute inset-0 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-emerald-600/20"
+          style={{ left: `${lowPct}%`, width: `${highPct - lowPct}%` }}
+        />
+        <div
+          className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+            over ? "bg-red-500" : inRange ? "bg-emerald-600" : "bg-blue-500"
+          }`}
+          style={{ width: `${fillPct}%` }}
+        />
+        <div className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full" style={{ left: `${lowPct}%` }} />
+        <div className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full" style={{ left: `${highPct}%` }} />
+      </div>
+      <p
+        className={`text-[11px] tabular-nums text-center ${over ? "text-red-500" : inRange ? "text-emerald-600" : "text-blue-500"}`}
+      >
+        {statusText}
+      </p>
     </div>
   )
 }
@@ -819,7 +823,7 @@ function MacroCard({
   cal,
   target,
   range,
-  tip,
+  notes,
 }: {
   label: string
   value: number
@@ -828,7 +832,7 @@ function MacroCard({
   cal?: number
   target?: string
   range?: { low: number; high: number } | null
-  tip?: { goal: string; note: string }
+  notes?: string[]
 }) {
   return (
     <Card>
@@ -841,33 +845,16 @@ function MacroCard({
           {cal !== undefined && cal > 0 && <span>{cal} cal</span>}
         </p>
         {target && (
-          <div className="flex items-center justify-center gap-1 pt-0.5">
-            <p className="text-xs text-muted-foreground/70">Target: {target}</p>
-            {tip && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button className="text-muted-foreground/50 hover:text-muted-foreground cursor-pointer">
-                    <Info className="h-3 w-3" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent side="top" className="w-auto max-w-56 text-xs p-3 space-y-1.5">
-                  <p className="font-medium">{tip.goal}</p>
-                  <ul className="text-muted-foreground space-y-0.5">
-                    {tip.note.split("\n").map((line, i) => (
-                      <li key={i} className="flex gap-1.5">
-                        <span className="shrink-0">•</span>
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </PopoverContent>
-              </Popover>
-            )}
+            <p className="text-xs text-muted-foreground/70 pt-0.5">{target}</p>
+        )}
+        {notes && notes.length > 0 && (
+          <div className="text-[11px] text-muted-foreground/70 space-y-0.5 pt-0.5">
+            {notes.map((note, i) => (
+              <p key={i}>{note}</p>
+            ))}
           </div>
         )}
-        {range && range.low > 0 && (
-          <RangeBar value={value} low={range.low} high={range.high} />
-        )}
+        {range && range.low > 0 && <RangeBar value={value} low={range.low} high={range.high} />}
       </CardContent>
     </Card>
   )
@@ -1066,4 +1053,3 @@ function WeightForm({
     </div>
   )
 }
-
