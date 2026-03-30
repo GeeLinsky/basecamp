@@ -41,3 +41,4 @@ Personal website and dashboard for Garrett Polinsky (geelinsky.com).
 - Macro display order: fat, carbs, protein
 - All interactive UI elements should have `cursor-pointer`
 - Dates should use local time formatting, never `toISOString()` for date strings
+- Every page component must include a `<Helmet>` with both `<title>` and `<meta name="description">`

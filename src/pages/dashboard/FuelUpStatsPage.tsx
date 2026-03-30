@@ -132,6 +132,7 @@ export default function FuelUpStatsPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <Helmet>
         <title>FuelUp Stats | GeeLinsky</title>
+        <meta name="description" content="View your nutrition trends and macro breakdowns." />
       </Helmet>
 
       <div className="flex items-center gap-3">
