@@ -832,7 +832,12 @@ function RangeBar({ value, low, high }: { value: number; low: number; high: numb
   const remaining = low - value
   const overBy = value - high
   const headroom = high - value
-  const statusText = over ? `${overBy}g over` : inRange ? `${headroom}g to spare` : `${remaining}g to go`
+  const upperRemaining = high - value
+  const statusText = over
+    ? `${overBy}g over`
+    : inRange
+      ? `${headroom}g to spare`
+      : `${remaining}g to go · ${upperRemaining}g max`
 
   return (
     <div className="space-y-1 mt-2">
