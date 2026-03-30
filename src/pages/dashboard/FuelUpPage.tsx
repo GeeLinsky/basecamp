@@ -469,6 +469,7 @@ export default function FuelUpPage() {
                 : undefined
             }
             range={fatTarget}
+            weightLbs={weight?.weight_lbs}
           />
           <MacroCard
             label="Carbs"
@@ -478,6 +479,7 @@ export default function FuelUpPage() {
             cal={Math.round(totals.carbs * 4)}
             target={weight ? "Flexible — scale with activity" : undefined}
             notes={weight ? ["More activity \u2192 more carbs", "Fat loss \u2192 fewer carbs"] : undefined}
+            weightLbs={weight?.weight_lbs}
           />
           <MacroCard
             label="Protein"
@@ -491,6 +493,7 @@ export default function FuelUpPage() {
                 : undefined
             }
             range={proteinTarget}
+            weightLbs={weight?.weight_lbs}
           />
         </div>
 
@@ -874,6 +877,7 @@ function MacroCard({
   target,
   range,
   notes,
+  weightLbs,
 }: {
   label: string
   value: number
@@ -883,7 +887,10 @@ function MacroCard({
   target?: string
   range?: { low: number; high: number } | null
   notes?: string[]
+  weightLbs?: number
 }) {
+  const gPerLb = weightLbs && weightLbs > 0 ? (value / weightLbs).toFixed(2) : null
+
   return (
     <Card>
       <CardContent className="p-4 text-center space-y-1">
@@ -891,6 +898,8 @@ function MacroCard({
         {pct !== undefined && pct > 0 && <p className="text-2xl font-bold text-primary">{pct}%</p>}
         <p className="text-sm text-muted-foreground">
           {value} {unit}
+          {gPerLb && <span className="mx-1">·</span>}
+          {gPerLb && <span>{gPerLb} g/lb</span>}
           {cal !== undefined && cal > 0 && <span className="mx-1">·</span>}
           {cal !== undefined && cal > 0 && <span>{cal} cal</span>}
         </p>
