@@ -28,7 +28,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Loader2, Send, Users, User, Trash2, Ban, ShieldCheck, MailPlus } from "lucide-react"
+import { Loader2, Send, Users, Trash2, Ban, ShieldCheck, MailPlus } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
 
