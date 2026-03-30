@@ -20,6 +20,7 @@ import {
   Flame,
   Blocks,
   Settings,
+  Users,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -28,6 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Link } from "react-router-dom"
+import { useAdmin } from "@/hooks/use-admin"
 import clsx from "clsx"
 import { linkClassName } from "@/lib/utils"
 import ThemeToggle from "@/components/theme/ThemeToggle"
@@ -264,6 +266,7 @@ export default function DigitalCard() {
 function AuthPopover() {
   const { user, loading: authLoading, signOut } = useAuth()
   const { displayName } = useUserDisplay()
+  const { isAdmin } = useAdmin()
   const [open, setOpen] = useState(false)
 
   if (authLoading) {
@@ -321,6 +324,14 @@ function AuthPopover() {
                   FuelUp
                 </Link>
               </Button>
+              {isAdmin && (
+                <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                  <Link to="/dashboard/users">
+                    <Users className="h-4 w-4 mr-2" />
+                    Users
+                  </Link>
+                </Button>
+              )}
               <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
                 <Link to="/dashboard/component-showcase">
                   <Blocks className="h-4 w-4 mr-2" />

@@ -10,6 +10,7 @@ import DashboardLayout from "./layout/DashboardLayout"
 import SettingsPage from "./pages/dashboard/SettingsPage"
 import FuelUpPage from "./pages/dashboard/FuelUpPage"
 import FuelUpStatsPage from "./pages/dashboard/FuelUpStatsPage"
+import UsersPage from "./pages/dashboard/UsersPage"
 import AuthCallbackPage from "./pages/AuthCallbackPage"
 import { IS_DEV } from "@/utils/env"
 
@@ -51,6 +52,7 @@ const App = () => {
           <Route path="fuelup" element={<FuelUpPage />} />
           <Route path="fuelup/stats" element={<FuelUpStatsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="users" element={<UsersPage />} />
           <Route path="component-showcase" element={<ComponentsShowcasePage />} />
 
           <Route index element={<Navigate to="/404" replace />} />

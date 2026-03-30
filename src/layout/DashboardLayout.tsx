@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Home, Flame, Blocks, RotateCcw, SquareActivity } from "lucide-react"
+import { Home, Flame, Blocks, RotateCcw, SquareActivity, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ColorToggle from "@/components/color/ColorToggle"
 import ThemeToggle from "@/components/theme/ThemeToggle"
@@ -26,10 +26,12 @@ import { useAuth } from "@/context/AuthContext"
 import { useConfigContext } from "@/context/ConfigContext"
 import { UserAvatar } from "@/components/UserAvatar"
 import { AccountMenuContent } from "@/components/AccountMenuContent"
+import { useAdmin } from "@/hooks/use-admin"
 import { IS_DEV } from "@/utils/env"
 
 const navItems = [
   { to: "/dashboard/fuelup", label: "FuelUp", icon: Flame },
+  { to: "/dashboard/users", label: "Users", icon: Users, adminOnly: true },
   { to: "/dashboard/component-showcase", label: "Component Showcase", icon: Blocks },
   { to: "/", label: "Home", icon: Home },
 ]
@@ -63,10 +65,13 @@ const DashboardLayout = () => {
 
         <SidebarNavContent />
 
-        <SidebarFooterControls devtoolsEnabled={devtoolsEnabled} onToggleDevtools={() => setDevtoolsEnabled(prev => !prev)} />
+        <SidebarFooterControls
+          devtoolsEnabled={devtoolsEnabled}
+          onToggleDevtools={() => setDevtoolsEnabled(prev => !prev)}
+        />
       </Sidebar>
 
-      <SidebarInset>
+      <SidebarInset className="min-w-0 overflow-x-hidden">
         <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-3 md:hidden">
           <SidebarTrigger className="size-9" />
           <NavLink to="/">
@@ -98,24 +103,27 @@ const DashboardLayout = () => {
 
 function SidebarNavContent() {
   const { isMobile, setOpenMobile } = useSidebar()
+  const { isAdmin } = useAdmin()
 
   return (
     <SidebarContent>
       <SidebarGroup>
         <SidebarGroupContent>
           <SidebarMenu>
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <SidebarMenuItem key={to}>
-                <NavLink to={to} end onClick={() => isMobile && setOpenMobile(false)}>
-                  {({ isActive }) => (
-                    <SidebarMenuButton tooltip={label} isActive={isActive}>
-                      <Icon />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  )}
-                </NavLink>
-              </SidebarMenuItem>
-            ))}
+            {navItems
+              .filter(({ adminOnly }) => !adminOnly || isAdmin)
+              .map(({ to, label, icon: Icon }) => (
+                <SidebarMenuItem key={to}>
+                  <NavLink to={to} end onClick={() => isMobile && setOpenMobile(false)}>
+                    {({ isActive }) => (
+                      <SidebarMenuButton tooltip={label} isActive={isActive}>
+                        <Icon />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                    )}
+                  </NavLink>
+                </SidebarMenuItem>
+              ))}
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
@@ -148,7 +156,12 @@ function SidebarFooterControls({
                     <UserAvatar className="size-7" fallbackClassName="text-[10px]" />
                   </div>
                 </PopoverTrigger>
-                <PopoverContent side="top" align="start" className="w-auto min-w-48 p-2" onOpenAutoFocus={e => e.preventDefault()}>
+                <PopoverContent
+                  side="top"
+                  align="start"
+                  className="w-auto min-w-48 p-2"
+                  onOpenAutoFocus={e => e.preventDefault()}
+                >
                   <AccountMenuContent onAction={() => setAccountOpen(false)} />
                 </PopoverContent>
               </Popover>
@@ -252,7 +265,12 @@ function MobileNavbarControls() {
               <UserAvatar className="size-7" fallbackClassName="text-[10px]" />
             </div>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="end" className="w-auto min-w-48 p-2" onOpenAutoFocus={e => e.preventDefault()}>
+          <PopoverContent
+            side="bottom"
+            align="end"
+            className="w-auto min-w-48 p-2"
+            onOpenAutoFocus={e => e.preventDefault()}
+          >
             <AccountMenuContent onAction={() => setAccountOpen(false)} />
           </PopoverContent>
         </Popover>
