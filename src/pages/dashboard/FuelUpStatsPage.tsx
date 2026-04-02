@@ -20,7 +20,6 @@ import {
   useDailySummaries,
   useWeightRange,
   type StatsRange,
-  type DailySummary,
 } from "@/hooks/use-fuelup-stats"
 
 const RANGES: { value: StatsRange; label: string }[] = [
@@ -29,10 +28,6 @@ const RANGES: { value: StatsRange; label: string }[] = [
   { value: "30d", label: "30D" },
   { value: "90d", label: "90D" },
 ]
-
-const calorieConfig = {
-  calories: { label: "Calories", color: "var(--chart-1)" },
-} satisfies ChartConfig
 
 const macroConfig = {
   fat_cal: { label: "Fats", color: "hsl(35, 90%, 55%)" },
@@ -200,39 +195,6 @@ export default function FuelUpStatsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Daily Calories</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={calorieConfig} className="aspect-[2/1] w-full">
-                <BarChart data={summaries} margin={{ left: -20, right: 4 }}>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatShortDate}
-                    interval={tickInterval}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        labelFormatter={(_, payload) => {
-                          const item = payload?.[0]?.payload as DailySummary | undefined
-                          if (!item) return ""
-                          return formatTooltipDate(item.date)
-                        }}
-                        formatter={(value) => [`${Math.round(Number(value))} cal`]}
-                      />
-                    }
-                  />
-                  <Bar dataKey="calories" fill="var(--color-calories)" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle className="text-sm font-medium">Macro Split (calories)</CardTitle>
             </CardHeader>
             <CardContent>
@@ -251,6 +213,7 @@ export default function FuelUpStatsPage() {
                       if (!active || !payload?.length) return null
                       const data = payload[0]?.payload
                       if (!data) return null
+                      const total = Math.round(data.fat_cal + data.carbs_cal + data.protein_cal)
                       const items = [
                         { label: "Fats", value: data.fat_cal, color: "hsl(35, 90%, 55%)" },
                         { label: "Carbs", value: data.carbs_cal, color: "hsl(210, 80%, 55%)" },
@@ -267,6 +230,10 @@ export default function FuelUpStatsPage() {
                                 <span className="font-mono font-medium tabular-nums">{Math.round(item.value).toLocaleString()}</span>
                               </div>
                             ))}
+                            <div className="flex items-center gap-2 border-t border-border/50 pt-1.5">
+                              <span className="flex-1 font-medium">Total</span>
+                              <span className="font-mono font-medium tabular-nums">{total.toLocaleString()} cal</span>
+                            </div>
                           </div>
                         </div>
                       )
@@ -317,7 +284,7 @@ export default function FuelUpStatsPage() {
                             const item = payload?.[0]?.payload
                             return item ? formatTooltipDate(item.date) : ""
                           }}
-                          formatter={(value) => [`${value} lbs`, "Weight"]}
+                          formatter={(value) => `${value} lbs`}
                         />
                       }
                     />
@@ -327,6 +294,7 @@ export default function FuelUpStatsPage() {
                       fill="var(--color-weight_lbs)"
                       fillOpacity={0.1}
                       stroke="none"
+                      tooltipType="none"
                     />
                     <Line
                       type="monotone"
