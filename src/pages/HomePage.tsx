@@ -160,9 +160,9 @@ export default function DigitalCard() {
             </div>
           </div>
 
-          {/* Featured Work Section */}
+          {/* Client Projects Section */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3 text-center">Featured Work</h3>
+            <h3 className="text-lg font-semibold mb-3 text-center">Client Projects</h3>
             <div className="space-y-4">
               <div className="flex items-center">
                 <Mountain className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
@@ -325,7 +325,13 @@ function AuthPopover() {
                 </Link>
               </Button>
               {isAdmin && (
-                <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                  asChild
+                  onClick={() => setOpen(false)}
+                >
                   <Link to="/dashboard/users">
                     <Users className="h-4 w-4 mr-2" />
                     Users
