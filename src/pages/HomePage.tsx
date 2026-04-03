@@ -56,26 +56,6 @@ export default function DigitalCard() {
       <Card className="w-full max-w-md overflow-hidden shadow-lg relative pb-0">
         {/* Action Buttons in Top Left */}
         <div className="absolute top-4 left-4 flex gap-2 z-10">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8" asChild>
-                  <a
-                    href="https://statix.geelinsky.com/files/Garrett%20Polinsky's%20Resume.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span className="sr-only">PDF Resume</span>
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>PDF Resume</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
           <AuthPopover />
         </div>
 
@@ -189,8 +169,22 @@ export default function DigitalCard() {
             </div>
           </div>
 
+          {/* PDF Resume */}
+          <div className="flex justify-center">
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href="https://statix.geelinsky.com/files/Garrett%20Polinsky's%20Resume.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="h-4 w-4" />
+                PDF Resume
+              </a>
+            </Button>
+          </div>
+
           {/* Social Icons at Bottom */}
-          <div className="pt-4">
+          <div className="pt-6">
             <div className="flex justify-center space-x-6">
               <TooltipProvider>
                 <Tooltip>

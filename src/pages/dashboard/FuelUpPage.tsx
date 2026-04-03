@@ -839,7 +839,7 @@ function RangeBar({ value, low, high }: { value: number; low: number; high: numb
   const statusText = over
     ? `${overBy}g over`
     : inRange
-      ? `${headroom}g to spare`
+      ? `${value - low}g above min · ${headroom}g to spare`
       : `${remaining}g to go · ${upperRemaining}g max`
 
   return (
