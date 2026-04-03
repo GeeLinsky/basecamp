@@ -71,7 +71,7 @@ const DashboardLayout = () => {
         />
       </Sidebar>
 
-      <SidebarInset className="min-w-0 overflow-x-hidden">
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-3 md:hidden">
           <SidebarTrigger className="size-9" />
           <NavLink to="/">
