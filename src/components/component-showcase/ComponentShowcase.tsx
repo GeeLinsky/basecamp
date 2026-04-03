@@ -2079,7 +2079,7 @@ const ComponentShowcase = () => {
                 <CardTitle>Navigation Menu</CardTitle>
                 <CardDescription>A responsive navigation component</CardDescription>
               </CardHeader>
-              <CardContent className="overflow-hidden">
+              <CardContent>
                 <NavigationMenu>
                   <NavigationMenuList className="flex-wrap">
                     <NavigationMenuItem>
