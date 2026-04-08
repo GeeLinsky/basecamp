@@ -64,21 +64,18 @@ export default function FuelUpStatsPage() {
 
   const stats = useMemo(() => {
     if (daysWithData.length === 0) {
-      return { avgCal: 0, avgFat: 0, avgCarbs: 0, avgProtein: 0, totalEntries: 0, daysLogged: 0 }
+      return { avgCal: 0, avgFat: 0, avgCarbs: 0, avgProtein: 0 }
     }
     const totalCal = daysWithData.reduce((s, d) => s + d.calories, 0)
     const totalFat = daysWithData.reduce((s, d) => s + d.fat_g, 0)
     const totalCarbs = daysWithData.reduce((s, d) => s + d.carbs_g, 0)
     const totalProtein = daysWithData.reduce((s, d) => s + d.protein_g, 0)
-    const totalEntries = daysWithData.reduce((s, d) => s + d.entry_count, 0)
     const n = daysWithData.length
     return {
       avgCal: Math.round(totalCal / n),
       avgFat: Math.round(totalFat / n),
       avgCarbs: Math.round(totalCarbs / n),
       avgProtein: Math.round(totalProtein / n),
-      totalEntries,
-      daysLogged: n,
     }
   }, [daysWithData])
 
@@ -171,25 +168,24 @@ export default function FuelUpStatsPage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <StatCard label="Avg Calories" value={`${stats.avgCal}`} sub="per day" trend={calorieTrend} />
             <StatCard label="Avg Fat" value={`${stats.avgFat}g`} sub="per day" />
             <StatCard label="Avg Carbs" value={`${stats.avgCarbs}g`} sub="per day" />
             <StatCard label="Avg Protein" value={`${stats.avgProtein}g`} sub="per day" />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label="Days Logged" value={`${stats.daysLogged}`} sub={`of ${summaries.length}`} />
-            <StatCard label="Total Entries" value={`${stats.totalEntries}`} sub="food items" />
+            {weights.length > 0 && (
+              <StatCard
+                label="Avg Weight"
+                value={`${Math.round((weights.reduce((s, w) => s + w.weight_lbs, 0) / weights.length) * 10) / 10}`}
+                sub="lbs"
+              />
+            )}
             {weightTrend && (
               <StatCard
                 label="Weight Change"
                 value={`${weightTrend.diff > 0 ? "+" : ""}${weightTrend.diff} lbs`}
                 sub="over period"
               />
-            )}
-            {weights.length > 0 && (
-              <StatCard label="Latest Weight" value={`${weights[weights.length - 1].weight_lbs}`} sub="lbs" />
             )}
           </div>
 

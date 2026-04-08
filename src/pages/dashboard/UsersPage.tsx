@@ -50,6 +50,9 @@ interface ProfileRow {
   email_confirmed_at: string | null
   last_sign_in_at: string | null
   banned_until: string | null
+  food_entry_count: number
+  food_favorite_count: number
+  weight_entry_count: number
 }
 
 function useUsers() {
@@ -293,6 +296,7 @@ function UserList() {
               <TableHead>User</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Activity</TableHead>
               <TableHead className="w-[100px]" />
             </TableRow>
           </TableHeader>
@@ -344,6 +348,22 @@ function UserList() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.role === "admin" ? "default" : "outline"} className="capitalize">{u.role}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-3 text-xs text-muted-foreground tabular-nums">
+                      <Tooltip>
+                        <TooltipTrigger className="cursor-default">{u.food_entry_count} entries</TooltipTrigger>
+                        <TooltipContent>Food entries</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger className="cursor-default">{u.food_favorite_count} favs</TooltipTrigger>
+                        <TooltipContent>Food favorites</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger className="cursor-default">{u.weight_entry_count} weights</TooltipTrigger>
+                        <TooltipContent>Weight entries</TooltipContent>
+                      </Tooltip>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {!isYou && (
