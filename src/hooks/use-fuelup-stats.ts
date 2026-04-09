@@ -102,18 +102,55 @@ export function useWeightRange(userId: string | undefined, range: StatsRange) {
   return useQuery({
     queryKey: ["fuelup-weight-range", userId, range],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fuelup_weight")
-        .select("effective_date, weight_lbs")
-        .eq("user_id", userId!)
-        .gte("effective_date", startDate)
-        .order("effective_date", { ascending: true })
+      const [rangeResult, seedResult] = await Promise.all([
+        supabase
+          .from("fuelup_weight")
+          .select("effective_date, weight_lbs")
+          .eq("user_id", userId!)
+          .gte("effective_date", startDate)
+          .order("effective_date", { ascending: true }),
+        supabase
+          .from("fuelup_weight")
+          .select("effective_date, weight_lbs")
+          .eq("user_id", userId!)
+          .lt("effective_date", startDate)
+          .order("effective_date", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
 
-      if (error) throw error
-      return (data ?? []).map(w => ({
-        date: w.effective_date,
-        weight_lbs: Number(w.weight_lbs),
-      })) as WeightPoint[]
+      if (rangeResult.error) throw rangeResult.error
+      if (seedResult.error) throw seedResult.error
+
+      const entryMap = new Map<string, number>()
+      if (seedResult.data) {
+        entryMap.set(seedResult.data.effective_date, Number(seedResult.data.weight_lbs))
+      }
+      for (const w of rangeResult.data ?? []) {
+        entryMap.set(w.effective_date, Number(w.weight_lbs))
+      }
+
+      if (entryMap.size === 0) return [] as WeightPoint[]
+
+      const days = { "7d": 7, "14d": 14, "30d": 30, "90d": 90 }[range]
+      const today = formatLocalDate(new Date())
+      const filled: WeightPoint[] = []
+      let carry: number | null = seedResult.data ? Number(seedResult.data.weight_lbs) : null
+
+      for (let i = 0; i < days; i++) {
+        const d = new Date()
+        d.setDate(d.getDate() - days + 1 + i)
+        const dateStr = formatLocalDate(d)
+        if (dateStr > today) break
+
+        const logged = entryMap.get(dateStr)
+        if (logged !== undefined) carry = logged
+        if (carry !== null) {
+          filled.push({ date: dateStr, weight_lbs: carry })
+        }
+      }
+
+      return filled
     },
     enabled: !!userId,
   })

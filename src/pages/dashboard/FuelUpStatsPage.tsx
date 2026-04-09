@@ -267,6 +267,7 @@ export default function FuelUpStatsPage() {
                     <XAxis
                       dataKey="date"
                       tickFormatter={formatShortDate}
+                      interval={tickInterval}
                       tick={{ fontSize: 11 }}
                     />
                     <YAxis
