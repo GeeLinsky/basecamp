@@ -140,7 +140,6 @@ function SidebarFooterControls({
 }) {
   const { open } = useSidebar()
   const { user } = useAuth()
-  const { isDark } = useConfigContext()
   const tooltipSide = open ? "top" : "right"
   const [accountOpen, setAccountOpen] = useState(false)
 
