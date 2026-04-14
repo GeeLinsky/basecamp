@@ -15,7 +15,7 @@ import AuthCallbackPage from "./pages/AuthCallbackPage"
 import { IS_DEV } from "@/utils/env"
 
 const App = () => {
-  const { isDark, theme, devtoolsEnabled } = useConfigContext()
+  const { isDark, colorMode, theme, devtoolsEnabled } = useConfigContext()
   const location = useLocation()
 
   useEffect(() => {
@@ -27,12 +27,11 @@ const App = () => {
 
     if (isDark) {
       root.classList.add("dark")
-      localStorage.setItem("color", "dark")
     } else {
       root.classList.remove("dark")
-      localStorage.setItem("color", "light")
     }
-  }, [isDark])
+    localStorage.setItem("color", colorMode)
+  }, [isDark, colorMode])
 
   useEffect(() => {
     const prevTheme = localStorage.getItem("theme")

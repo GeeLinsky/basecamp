@@ -35,7 +35,6 @@ import { linkClassName } from "@/lib/utils"
 import ThemeToggle from "@/components/theme/ThemeToggle"
 import ColorToggle from "@/components/color/ColorToggle"
 import { isDesktop } from "react-device-detect"
-import { useConfigContext } from "@/context/ConfigContext"
 import { useAuth } from "@/context/AuthContext"
 import { UserAvatar } from "@/components/UserAvatar"
 import { useUserDisplay } from "@/hooks/use-user-display"
@@ -45,7 +44,6 @@ import { toast } from "sonner"
 const supabase = createClient()
 
 export default function DigitalCard() {
-  const { isDark } = useConfigContext()
 
   return (
     <main className={clsx("flex items-center justify-center p-4", { "min-h-screen": isDesktop })}>
@@ -74,16 +72,7 @@ export default function DigitalCard() {
             </Tooltip>
           </TooltipProvider>
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ColorToggle variant="outline" size="icon" className="h-8 w-8" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{isDark ? "Light Mode" : "Dark Mode"}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <ColorToggle variant="outline" size="icon" className="h-8 w-8" />
         </div>
 
         <CardContent className="p-6">

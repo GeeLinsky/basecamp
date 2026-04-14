@@ -1,8 +1,12 @@
-import { useState, useEffect, useContext, createContext } from "react"
+import { useState, useEffect, useContext, createContext, useMemo } from "react"
 import type { Dispatch, SetStateAction } from "react"
+
+export type ColorMode = "light" | "dark" | "system"
 
 interface ConfigContextType {
   isDark: boolean
+  colorMode: ColorMode
+  setColorMode: Dispatch<SetStateAction<ColorMode>>
   setIsDark: Dispatch<SetStateAction<boolean>>
   theme: string
   setTheme: Dispatch<SetStateAction<string>>
@@ -20,15 +24,37 @@ export const useConfigContext = () => {
   return context
 }
 
+function getSystemDark() {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+}
+
 export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isDark, setIsDark] = useState(() => {
+  const [colorMode, setColorMode] = useState<ColorMode>(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("color")
-      if (stored) return stored === "dark"
-      return window.matchMedia("(prefers-color-scheme: dark)").matches || true
+      const stored = localStorage.getItem("color") as ColorMode | null
+      if (stored === "light" || stored === "dark" || stored === "system") return stored
     }
-    return true
+    return "system"
   })
+
+  const [systemDark, setSystemDark] = useState(getSystemDark)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)")
+    const handler = (e: MediaQueryListEvent) => setSystemDark(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+
+  const isDark = useMemo(
+    () => (colorMode === "system" ? systemDark : colorMode === "dark"),
+    [colorMode, systemDark],
+  )
+
+  const setIsDark: Dispatch<SetStateAction<boolean>> = (value) => {
+    const next = typeof value === "function" ? value(isDark) : value
+    setColorMode(next ? "dark" : "light")
+  }
 
   const [devtoolsEnabled, setDevtoolsEnabled] = useState(() => {
     if (typeof window !== "undefined") {
@@ -42,7 +68,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
   }, [devtoolsEnabled])
 
   const [theme, setTheme] = useState(() => {
-    const defaultTheme = "theme-solar-dusk"
+    const defaultTheme = "theme-lattice"
 
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("theme")
@@ -59,6 +85,8 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     <ConfigContext.Provider
       value={{
         isDark,
+        colorMode,
+        setColorMode,
         setIsDark,
         theme,
         setTheme,

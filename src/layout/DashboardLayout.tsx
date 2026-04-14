@@ -193,14 +193,7 @@ function SidebarFooterControls({
                 <p>Change theme</p>
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ColorToggle variant="ghost" size="icon" className="size-9" />
-              </TooltipTrigger>
-              <TooltipContent side={tooltipSide}>
-                <p>{isDark ? "Light mode" : "Dark mode"}</p>
-              </TooltipContent>
-            </Tooltip>
+            <ColorToggle variant="ghost" size="icon" className="size-9" />
             <Tooltip>
               <TooltipTrigger asChild>
                 <SidebarTrigger className="size-9" />
@@ -218,7 +211,7 @@ function SidebarFooterControls({
 
 function MobileNavbarControls() {
   const { user } = useAuth()
-  const { isDark, devtoolsEnabled, setDevtoolsEnabled } = useConfigContext()
+  const { devtoolsEnabled, setDevtoolsEnabled } = useConfigContext()
   const [accountOpen, setAccountOpen] = useState(false)
 
   return (
@@ -250,14 +243,7 @@ function MobileNavbarControls() {
           <p>Change theme</p>
         </TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <ColorToggle variant="ghost" size="icon" className="size-9" />
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{isDark ? "Light mode" : "Dark mode"}</p>
-        </TooltipContent>
-      </Tooltip>
+      <ColorToggle variant="ghost" size="icon" className="size-9" />
       {user && (
         <Popover open={accountOpen} onOpenChange={setAccountOpen}>
           <PopoverTrigger asChild>

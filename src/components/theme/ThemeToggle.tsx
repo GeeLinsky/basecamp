@@ -1,9 +1,10 @@
 import { useState } from "react"
-import { Palette, Shuffle, ChevronsUpDown, ChevronUp, ChevronDown, Sun, Moon } from "lucide-react"
+import { Palette, Shuffle, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { useConfigContext } from "@/context/ConfigContext"
+import ColorToggle from "@/components/color/ColorToggle"
 import { CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
@@ -28,6 +29,7 @@ const themes = [
   { value: "theme-elegant-luxury", label: "Elegant Luxury" },
   { value: "theme-graphite", label: "Graphite" },
   { value: "theme-kodama-grove", label: "Kodama Grove" },
+  { value: "theme-lattice", label: "Lattice" },
   { value: "theme-midnight-bloom", label: "Midnight Bloom" },
   { value: "theme-mocha-mousse", label: "Mocha Mousse" },
   { value: "theme-modern-minimal", label: "Modern Minimal" },
@@ -55,8 +57,11 @@ const themes = [
   { value: "theme-violet-bloom", label: "Violet Bloom" },
 ]
 
-export default function ThemeSelector({ triggerVariant = "ghost", triggerClassName }: { triggerVariant?: "ghost" | "outline"; triggerClassName?: string } = {}) {
-  const { setTheme, theme, isDark, setIsDark } = useConfigContext()
+export default function ThemeSelector({
+  triggerVariant = "ghost",
+  triggerClassName,
+}: { triggerVariant?: "ghost" | "outline"; triggerClassName?: string } = {}) {
+  const { setTheme, theme } = useConfigContext()
 
   const [open, setOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState(false)
@@ -135,7 +140,9 @@ export default function ThemeSelector({ triggerVariant = "ghost", triggerClassNa
                     <ChevronUp className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Previous theme</p></TooltipContent>
+                <TooltipContent>
+                  <p>Previous theme</p>
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -143,7 +150,9 @@ export default function ThemeSelector({ triggerVariant = "ghost", triggerClassNa
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Next theme</p></TooltipContent>
+                <TooltipContent>
+                  <p>Next theme</p>
+                </TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -151,16 +160,11 @@ export default function ThemeSelector({ triggerVariant = "ghost", triggerClassNa
                     <Shuffle className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Random theme</p></TooltipContent>
+                <TooltipContent>
+                  <p>Random theme</p>
+                </TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => { setIsDark(!isDark) }}>
-                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>{isDark ? "Light mode" : "Dark mode"}</p></TooltipContent>
-              </Tooltip>
+              <ColorToggle variant="outline" size="icon" />
             </div>
           </div>
         </div>
