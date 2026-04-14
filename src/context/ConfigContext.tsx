@@ -46,12 +46,9 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
     return () => mq.removeEventListener("change", handler)
   }, [])
 
-  const isDark = useMemo(
-    () => (colorMode === "system" ? systemDark : colorMode === "dark"),
-    [colorMode, systemDark],
-  )
+  const isDark = useMemo(() => (colorMode === "system" ? systemDark : colorMode === "dark"), [colorMode, systemDark])
 
-  const setIsDark: Dispatch<SetStateAction<boolean>> = (value) => {
+  const setIsDark: Dispatch<SetStateAction<boolean>> = value => {
     const next = typeof value === "function" ? value(isDark) : value
     setColorMode(next ? "dark" : "light")
   }
