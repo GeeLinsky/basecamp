@@ -65,12 +65,12 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
   }, [devtoolsEnabled])
 
   const [theme, setTheme] = useState(() => {
-    const defaultTheme = "theme-lattice"
+    const defaultTheme = "theme-twitter"
 
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("theme")
 
-      if (stored) return stored
+      if (stored && stored !== "theme-lattice") return stored
 
       return defaultTheme
     }

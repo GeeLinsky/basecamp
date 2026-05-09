@@ -12,7 +12,8 @@
         var mode = localStorage.getItem("color") || "system"
         var dark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
         if (dark) document.documentElement.classList.add("dark")
-        var theme = localStorage.getItem("theme") || "theme-lattice"
+        var theme = localStorage.getItem("theme") || "theme-twitter"
+        if (theme === "theme-lattice") theme = "theme-twitter"
         document.body.classList.add(theme)
       })()
     </script>

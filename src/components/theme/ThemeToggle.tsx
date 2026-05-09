@@ -29,7 +29,6 @@ const themes = [
   { value: "theme-elegant-luxury", label: "Elegant Luxury" },
   { value: "theme-graphite", label: "Graphite" },
   { value: "theme-kodama-grove", label: "Kodama Grove" },
-  { value: "theme-lattice", label: "Lattice" },
   { value: "theme-midnight-bloom", label: "Midnight Bloom" },
   { value: "theme-mocha-mousse", label: "Mocha Mousse" },
   { value: "theme-modern-minimal", label: "Modern Minimal" },
