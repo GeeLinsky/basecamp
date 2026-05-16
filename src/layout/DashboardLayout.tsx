@@ -72,7 +72,7 @@ const DashboardLayout = () => {
       </Sidebar>
 
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-3 md:hidden">
+        <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b bg-background px-3 lg:hidden">
           <SidebarTrigger className="size-9" />
           <NavLink to="/">
             <img src={logoUrl} alt="GeeLinsky" className="size-6 cursor-pointer" />
@@ -144,7 +144,7 @@ function SidebarFooterControls({
   const [accountOpen, setAccountOpen] = useState(false)
 
   return (
-    <SidebarFooter className="hidden md:flex">
+    <SidebarFooter className="hidden lg:flex">
       <SidebarMenu>
         <SidebarMenuItem>
           <div className="flex items-center justify-center gap-1 group-data-[collapsible=icon]:flex-col">

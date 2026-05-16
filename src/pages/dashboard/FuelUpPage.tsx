@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, type ReactNode } from "react"
 import { Helmet } from "react-helmet-async"
 import { Link } from "react-router-dom"
 import { useQueryState, parseAsString } from "nuqs"
@@ -78,8 +78,8 @@ import {
 } from "@/hooks/use-fuelup"
 import { useFuelupWeight, useWeightHistory, useUpsertWeight } from "@/hooks/use-fuelup-weight"
 
-const FAT_PER_LB = { low: 0.3, high: 0.4 } as const
-const PROTEIN_PER_LB = { low: 0.8, high: 1.0 } as const
+const FAT_PER_LB = { low: 0.3, ideal: 0.4, high: 0.5 } as const
+const PROTEIN_PER_LB = { low: 0.8, ideal: 0.9, high: 1.0 } as const
 
 const foodFormSchema = z.object({
   label: z.string().min(1, "Food name is required"),
@@ -294,11 +294,16 @@ export default function FuelUpPage() {
   const totalCalories = calcCalories(totals.fat, totals.protein, totals.carbs)
 
   const fatTarget = weight
-    ? { low: Math.round(weight.weight_lbs * FAT_PER_LB.low), high: Math.round(weight.weight_lbs * FAT_PER_LB.high) }
+    ? {
+        low: Math.round(weight.weight_lbs * FAT_PER_LB.low),
+        ideal: Math.round(weight.weight_lbs * FAT_PER_LB.ideal),
+        high: Math.round(weight.weight_lbs * FAT_PER_LB.high),
+      }
     : null
   const proteinTarget = weight
     ? {
         low: Math.round(weight.weight_lbs * PROTEIN_PER_LB.low),
+        ideal: Math.round(weight.weight_lbs * PROTEIN_PER_LB.ideal),
         high: Math.round(weight.weight_lbs * PROTEIN_PER_LB.high),
       }
     : null
@@ -464,9 +469,14 @@ export default function FuelUpPage() {
             pct={totalCalories > 0 ? Math.round(((totals.fat * 9) / totalCalories) * 100) : 0}
             cal={Math.round(totals.fat * 9)}
             target={
-              fatTarget
-                ? `Target: ${fatTarget.low}–${fatTarget.high}g (${FAT_PER_LB.low}–${FAT_PER_LB.high}g/lb)`
-                : undefined
+              fatTarget ? (
+                <>
+                  <span className="font-medium text-foreground">Target Range:</span> {fatTarget.low}–{fatTarget.high}g (
+                  {FAT_PER_LB.low}–{FAT_PER_LB.high}g/lb)
+                  <br />
+                  <span className="font-medium text-foreground">Ideal Target:</span> {fatTarget.ideal}g ({FAT_PER_LB.ideal}g/lb)
+                </>
+              ) : undefined
             }
             range={fatTarget}
             weightLbs={weight?.weight_lbs}
@@ -488,9 +498,15 @@ export default function FuelUpPage() {
             pct={totalCalories > 0 ? Math.round(((totals.protein * 4) / totalCalories) * 100) : 0}
             cal={Math.round(totals.protein * 4)}
             target={
-              proteinTarget
-                ? `Target: ${proteinTarget.low}–${proteinTarget.high}g (${PROTEIN_PER_LB.low}–${PROTEIN_PER_LB.high}g/lb)`
-                : undefined
+              proteinTarget ? (
+                <>
+                  <span className="font-medium text-foreground">Target Range:</span> {proteinTarget.low}–
+                  {proteinTarget.high}g ({PROTEIN_PER_LB.low}–{PROTEIN_PER_LB.high}g/lb)
+                  <br />
+                  <span className="font-medium text-foreground">Ideal Target:</span> {proteinTarget.ideal}g (
+                  {PROTEIN_PER_LB.ideal}g/lb)
+                </>
+              ) : undefined
             }
             range={proteinTarget}
             weightLbs={weight?.weight_lbs}
@@ -824,11 +840,22 @@ function SortableFavorite({
   )
 }
 
-function RangeBar({ value, low, high }: { value: number; low: number; high: number }) {
+function RangeBar({
+  value,
+  low,
+  ideal,
+  high,
+}: {
+  value: number
+  low: number
+  ideal?: number
+  high: number
+}) {
   const max = high * 1.2
   const fillPct = Math.min((value / max) * 100, 100)
   const lowPct = (low / max) * 100
   const highPct = (high / max) * 100
+  const idealPct = ideal !== undefined ? (ideal / max) * 100 : null
   const inRange = value >= low && value <= high
   const over = value > high
 
@@ -836,11 +863,26 @@ function RangeBar({ value, low, high }: { value: number; low: number; high: numb
   const overBy = value - high
   const headroom = high - value
   const upperRemaining = high - value
+  const idealDiff = ideal !== undefined ? value - ideal : null
+  const idealText =
+    idealDiff === null
+      ? null
+      : idealDiff > 0
+        ? `${idealDiff}g above ideal`
+        : idealDiff < 0
+          ? `${-idealDiff}g to ideal`
+          : `at ideal`
   const statusText = over
-    ? `${overBy}g over`
+    ? idealText
+      ? `${value - low}g above min · ${idealText} · ${overBy}g above max`
+      : `${value - low}g above min · ${overBy}g above max`
     : inRange
-      ? `${value - low}g above min · ${headroom}g to spare`
-      : `${remaining}g to go · ${upperRemaining}g max`
+      ? idealText
+        ? `${value - low}g above min · ${idealText} · ${headroom}g to max`
+        : `${value - low}g above min · ${headroom}g to max`
+      : idealText
+        ? `${remaining}g to min · ${idealText} · ${upperRemaining}g to max`
+        : `${remaining}g to min · ${upperRemaining}g to max`
 
   return (
     <div className="space-y-1 mt-2">
@@ -858,6 +900,12 @@ function RangeBar({ value, low, high }: { value: number; low: number; high: numb
         />
         <div className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full" style={{ left: `${lowPct}%` }} />
         <div className="absolute -top-0.5 w-[2px] h-3 bg-foreground/80 rounded-full" style={{ left: `${highPct}%` }} />
+        {idealPct !== null && (
+          <div
+            className="absolute -top-1 w-[2px] h-4 bg-amber-500 rounded-full"
+            style={{ left: `${idealPct}%` }}
+          />
+        )}
       </div>
       <p
         className={`text-[11px] tabular-nums text-center ${over ? "text-red-500" : inRange ? "text-emerald-600" : "text-blue-500"}`}
@@ -884,8 +932,8 @@ function MacroCard({
   unit: string
   pct?: number
   cal?: number
-  target?: string
-  range?: { low: number; high: number } | null
+  target?: ReactNode
+  range?: { low: number; ideal?: number; high: number } | null
   notes?: string[]
   weightLbs?: number
 }) {
@@ -903,7 +951,7 @@ function MacroCard({
           {cal !== undefined && cal > 0 && <span className="mx-1">·</span>}
           {cal !== undefined && cal > 0 && <span>{cal} cal</span>}
         </p>
-        {target && <p className="text-xs text-muted-foreground/70 pt-0.5">{target}</p>}
+        {target && <p className="text-xs text-muted-foreground/70 pt-0.5 whitespace-pre-line">{target}</p>}
         {notes && notes.length > 0 && (
           <div className="text-[11px] text-muted-foreground/70 space-y-0.5 pt-0.5">
             {notes.map((note, i) => (
@@ -911,7 +959,9 @@ function MacroCard({
             ))}
           </div>
         )}
-        {range && range.low > 0 && <RangeBar value={value} low={range.low} high={range.high} />}
+        {range && range.low > 0 && (
+          <RangeBar value={value} low={range.low} ideal={range.ideal} high={range.high} />
+        )}
       </CardContent>
     </Card>
   )
