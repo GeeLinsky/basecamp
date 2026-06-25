@@ -90,7 +90,7 @@ export default function DigitalCard() {
           {/* Personal Information */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold">Garrett Polinsky</h1>
-            <h2 className="text-lg text-muted-foreground">Staff Software Engineer</h2>
+            <h2 className="text-lg text-muted-foreground">Senior Software Engineer</h2>
           </div>
 
           {/* Simplified List */}
@@ -99,12 +99,12 @@ export default function DigitalCard() {
             <div className="flex items-center">
               <Building2 className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
               <a
-                href="https://aliasintelligence.com"
+                href="https://latticepay.io"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={clsx("text-sm", linkClassName)}
               >
-                Alias Intelligence
+                Lattice
               </a>
             </div>
 
