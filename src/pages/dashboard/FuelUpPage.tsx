@@ -149,6 +149,42 @@ function formatWeightDate(dateStr: string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+interface EntryGroup {
+  key: string
+  entries: FoodEntry[]
+}
+
+function entryMatchKey(entry: FoodEntry): string {
+  return [
+    entry.label.trim().toLowerCase(),
+    Number(entry.fat_g),
+    Number(entry.carbs_g),
+    Number(entry.protein_g),
+    (entry.description ?? "").trim().toLowerCase(),
+  ].join("\0")
+}
+
+/** Collapse same-day entries that share label + macros + description into one list row. */
+function groupFoodEntries(entries: FoodEntry[]): EntryGroup[] {
+  const order: string[] = []
+  const map = new Map<string, FoodEntry[]>()
+  for (const entry of entries) {
+    const key = entryMatchKey(entry)
+    const bucket = map.get(key)
+    if (!bucket) {
+      order.push(key)
+      map.set(key, [entry])
+    } else {
+      bucket.push(entry)
+    }
+  }
+  return order.map(key => ({ key, entries: map.get(key)! }))
+}
+
+function flattenEntryGroups(groups: EntryGroup[]): FoodEntry[] {
+  return groups.flatMap(g => g.entries)
+}
+
 function ItemDescription({ text }: { text: string }) {
   return (
     <p className="text-xs text-muted-foreground break-words whitespace-pre-wrap">
@@ -157,10 +193,13 @@ function ItemDescription({ text }: { text: string }) {
   )
 }
 
-function FoodItemContent({ item }: { item: FoodEntry | FoodFavorite }) {
+function FoodItemContent({ item, count = 1 }: { item: FoodEntry | FoodFavorite; count?: number }) {
   return (
     <div className="space-y-2">
-      <p className="font-medium text-sm break-words">{item.label}</p>
+      <p className="font-medium text-sm break-words">
+        {item.label}
+        {count > 1 && <span className="ml-1.5 text-muted-foreground font-normal">×{count}</span>}
+      </p>
       <MacroSummary fat_g={item.fat_g} carbs_g={item.carbs_g} protein_g={item.protein_g} />
       {item.description && <ItemDescription text={item.description} />}
     </div>
@@ -254,14 +293,17 @@ export default function FuelUpPage() {
   const updateFavorite = useUpdateFavorite(userId ?? "")
   const createFavorite = useCreateFavorite(userId ?? "")
 
+  const entryGroups = useMemo(() => groupFoodEntries(entries), [entries])
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const oldIndex = entries.findIndex(e => e.id === active.id)
-    const newIndex = entries.findIndex(e => e.id === over.id)
-    const reordered = arrayMove(entries, oldIndex, newIndex)
+    const oldIndex = entryGroups.findIndex(g => g.entries[0].id === active.id)
+    const newIndex = entryGroups.findIndex(g => g.entries[0].id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
 
+    const reordered = flattenEntryGroups(arrayMove(entryGroups, oldIndex, newIndex))
     reorderEntries.mutate(reordered)
   }
 
@@ -602,20 +644,41 @@ export default function FuelUpPage() {
           <p className="text-center text-muted-foreground py-8">No entries for this day.</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={entries.map(e => e.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={entryGroups.map(g => g.entries[0].id)}
+              strategy={verticalListSortingStrategy}
+            >
               <div className="space-y-2">
-                {entries.map(entry => (
-                  <SortableEntry
-                    key={entry.id}
-                    entry={entry}
-                    onEdit={() => setEditingEntry(entry)}
-                    onSaveAsFavorite={() => {
-                      const nextOrder = favorites.length > 0 ? Math.max(...favorites.map(f => f.sort_order)) + 1 : 0
-                      saveAsFavorite.mutate({ entry, nextOrder })
-                    }}
-                    onDelete={() => deleteEntry.mutate(entry.id)}
-                  />
-                ))}
+                {entryGroups.map(group => {
+                  const representative = group.entries[group.entries.length - 1]
+                  return (
+                    <SortableEntry
+                      key={group.entries[0].id}
+                      entry={representative}
+                      sortableId={group.entries[0].id}
+                      count={group.entries.length}
+                      onAdd={() => {
+                        const nextOrder =
+                          entries.length > 0 ? Math.max(...entries.map(e => e.sort_order)) + 1 : 0
+                        addEntry.mutate({
+                          label: representative.label,
+                          description: representative.description ?? undefined,
+                          fat_g: Number(representative.fat_g),
+                          carbs_g: Number(representative.carbs_g),
+                          protein_g: Number(representative.protein_g),
+                          sort_order: nextOrder,
+                        })
+                      }}
+                      onEdit={() => setEditingEntry(representative)}
+                      onSaveAsFavorite={() => {
+                        const nextOrder =
+                          favorites.length > 0 ? Math.max(...favorites.map(f => f.sort_order)) + 1 : 0
+                        saveAsFavorite.mutate({ entry: representative, nextOrder })
+                      }}
+                      onDelete={() => deleteEntry.mutate(representative.id)}
+                    />
+                  )
+                })}
               </div>
             </SortableContext>
           </DndContext>
@@ -644,16 +707,22 @@ export default function FuelUpPage() {
 
 function SortableEntry({
   entry,
+  sortableId,
+  count,
+  onAdd,
   onEdit,
   onSaveAsFavorite,
   onDelete,
 }: {
   entry: FoodEntry
+  sortableId: string
+  count: number
+  onAdd: () => void
   onEdit: () => void
   onSaveAsFavorite: () => void
   onDelete: () => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortableId })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -672,9 +741,24 @@ function SortableEntry({
           <GripVertical className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1 ml-2">
-          <FoodItemContent item={entry} />
+          <FoodItemContent item={entry} count={count} />
         </div>
         <div className="flex gap-1 ml-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                onClick={onAdd}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Add another</p>
+            </TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -726,7 +810,9 @@ function SortableEntry({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete entry?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove "{entry.label}" from today's entries.
+                  {count > 1
+                    ? `This will remove 1 of ${count} "${entry.label}" entries.`
+                    : `This will permanently remove "${entry.label}" from today's entries.`}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
