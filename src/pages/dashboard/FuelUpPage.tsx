@@ -662,7 +662,7 @@ export default function FuelUpPage() {
                           entries.length > 0 ? Math.max(...entries.map(e => e.sort_order)) + 1 : 0
                         addEntry.mutate({
                           label: representative.label,
-                          description: representative.description ?? undefined,
+                          description: representative.description,
                           fat_g: Number(representative.fat_g),
                           carbs_g: Number(representative.carbs_g),
                           protein_g: Number(representative.protein_g),
