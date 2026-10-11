@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Loader2, ArrowLeft, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import {
+  formatLocalDate,
   useDailySummaries,
   useWeightRange,
   type StatsRange,
@@ -27,7 +28,45 @@ const RANGES: { value: StatsRange; label: string }[] = [
   { value: "14d", label: "14D" },
   { value: "30d", label: "30D" },
   { value: "90d", label: "90D" },
+  { value: "180d", label: "6M" },
+  { value: "365d", label: "1Y" },
 ]
+
+// Daily bars are unreadable past ~90 days, so longer ranges are grouped and show average calories per day.
+type Grain = "day" | "week" | "month"
+
+const GRAIN: Record<StatsRange, Grain> = {
+  "7d": "day",
+  "14d": "day",
+  "30d": "day",
+  "90d": "day",
+  "180d": "week",
+  "365d": "month",
+}
+
+function parseLocalDate(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function bucketStart(dateStr: string, grain: Grain): string {
+  if (grain === "day") return dateStr
+  const d = parseLocalDate(dateStr)
+  if (grain === "week") d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  else d.setDate(1)
+  return formatLocalDate(d)
+}
+
+function formatBucketTick(dateStr: string, grain: Grain) {
+  if (grain !== "month") return formatShortDate(dateStr)
+  return parseLocalDate(dateStr).toLocaleDateString("en-US", { month: "short" })
+}
+
+function formatBucketLabel(dateStr: string, grain: Grain) {
+  if (grain === "week") return `Week of ${formatShortDate(dateStr)}`
+  if (grain === "month") return parseLocalDate(dateStr).toLocaleDateString("en-US", { month: "long", year: "numeric" })
+  return formatTooltipDate(dateStr)
+}
 
 const macroConfig = {
   fat_cal: { label: "Fats", color: "hsl(35, 90%, 55%)" },
@@ -79,16 +118,32 @@ export default function FuelUpStatsPage() {
     }
   }, [daysWithData])
 
-  const macroChartData = useMemo(
-    () =>
-      summaries.map(d => ({
-        date: d.date,
-        fat_cal: Math.round(d.fat_g * 9),
-        carbs_cal: Math.round(d.carbs_g * 4),
-        protein_cal: Math.round(d.protein_g * 4),
-      })),
-    [summaries],
-  )
+  const grain = GRAIN[range]
+
+  const macroChartData = useMemo(() => {
+    const buckets = new Map<string, { fat: number; carbs: number; protein: number; n: number }>()
+    for (const d of summaries) {
+      const key = bucketStart(d.date, grain)
+      const b = buckets.get(key) ?? { fat: 0, carbs: 0, protein: 0, n: 0 }
+      // Grouped buckets average only the days that have entries, so empty days don't drag the average down.
+      if (grain === "day" || d.entry_count > 0) {
+        b.fat += d.fat_g
+        b.carbs += d.carbs_g
+        b.protein += d.protein_g
+        b.n += 1
+      }
+      buckets.set(key, b)
+    }
+    return Array.from(buckets.entries()).map(([date, b]) => {
+      const n = Math.max(b.n, 1)
+      return {
+        date,
+        fat_cal: Math.round((b.fat * 9) / n),
+        carbs_cal: Math.round((b.carbs * 4) / n),
+        protein_cal: Math.round((b.protein * 4) / n),
+      }
+    })
+  }, [summaries, grain])
 
   const calorieTrend = useMemo(() => {
     if (daysWithData.length < 3) return null
@@ -103,6 +158,23 @@ export default function FuelUpStatsPage() {
     return { direction: diff > 0 ? ("up" as const) : ("down" as const), pct: Math.abs(pct) }
   }, [daysWithData])
 
+  // Weights are forward-filled daily, so a bucket's mean is the time-weighted average weight for that week/month.
+  const weightChartData = useMemo(() => {
+    if (grain === "day") return weights
+    const buckets = new Map<string, { sum: number; n: number }>()
+    for (const w of weights) {
+      const key = bucketStart(w.date, grain)
+      const b = buckets.get(key) ?? { sum: 0, n: 0 }
+      b.sum += w.weight_lbs
+      b.n += 1
+      buckets.set(key, b)
+    }
+    return Array.from(buckets.entries()).map(([date, b]) => ({
+      date,
+      weight_lbs: Math.round((b.sum / b.n) * 10) / 10,
+    }))
+  }, [weights, grain])
+
   const weightTrend = useMemo(() => {
     if (weights.length < 2) return null
     const first = weights[0].weight_lbs
@@ -111,12 +183,7 @@ export default function FuelUpStatsPage() {
     return { diff: Math.round(diff * 10) / 10 }
   }, [weights])
 
-  const tickInterval = useMemo(() => {
-    if (range === "7d") return 0
-    if (range === "14d") return 1
-    if (range === "30d") return 3
-    return 6
-  }, [range])
+  const tickInterval = { "7d": 0, "14d": 1, "30d": 3, "90d": 6, "180d": 3, "365d": 0 }[range]
 
   if (!user) return null
 
@@ -191,7 +258,9 @@ export default function FuelUpStatsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium">Macro Split (calories)</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                {grain === "day" ? "Macro Split (calories)" : "Macro Split (avg calories per day)"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer config={macroConfig} className="aspect-[2/1] w-full">
@@ -199,7 +268,7 @@ export default function FuelUpStatsPage() {
                   <CartesianGrid vertical={false} />
                   <XAxis
                     dataKey="date"
-                    tickFormatter={formatShortDate}
+                    tickFormatter={d => formatBucketTick(d, grain)}
                     interval={tickInterval}
                     tick={{ fontSize: 11 }}
                   />
@@ -217,7 +286,7 @@ export default function FuelUpStatsPage() {
                       ]
                       return (
                         <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
-                          <p className="font-medium mb-1.5">{formatTooltipDate(data.date)}</p>
+                          <p className="font-medium mb-1.5">{formatBucketLabel(data.date, grain)}</p>
                           <div className="grid gap-1.5">
                             {items.map(item => (
                               <div key={item.label} className="flex items-center gap-2">
@@ -255,18 +324,20 @@ export default function FuelUpStatsPage() {
             </CardContent>
           </Card>
 
-          {weights.length > 1 && (
+          {weightChartData.length > 1 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Weight Trend</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {grain === "day" ? "Weight Trend" : "Weight Trend (avg per " + grain + ")"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={weightConfig} className="aspect-[2/1] w-full">
-                  <ComposedChart data={weights} margin={{ left: -20, right: 4 }}>
+                  <ComposedChart data={weightChartData} margin={{ left: -20, right: 4 }}>
                     <CartesianGrid vertical={false} />
                     <XAxis
                       dataKey="date"
-                      tickFormatter={formatShortDate}
+                      tickFormatter={d => formatBucketTick(d, grain)}
                       interval={tickInterval}
                       tick={{ fontSize: 11 }}
                     />
@@ -279,7 +350,7 @@ export default function FuelUpStatsPage() {
                         <ChartTooltipContent
                           labelFormatter={(_, payload) => {
                             const item = payload?.[0]?.payload
-                            return item ? formatTooltipDate(item.date) : ""
+                            return item ? formatBucketLabel(item.date, grain) : ""
                           }}
                           formatter={(value) => `${value} lbs`}
                         />
@@ -298,7 +369,7 @@ export default function FuelUpStatsPage() {
                       dataKey="weight_lbs"
                       stroke="var(--color-weight_lbs)"
                       strokeWidth={2}
-                      dot={{ r: 3 }}
+                      dot={grain === "day" ? { r: 3 } : false}
                       activeDot={{ r: 5 }}
                     />
                   </ComposedChart>

@@ -23,11 +23,35 @@ export interface TopFood {
   avg_calories: number
 }
 
-export type StatsRange = "7d" | "14d" | "30d" | "90d"
+export type StatsRange = "7d" | "14d" | "30d" | "90d" | "180d" | "365d"
+
+export const RANGE_DAYS: Record<StatsRange, number> = {
+  "7d": 7,
+  "14d": 14,
+  "30d": 30,
+  "90d": 90,
+  "180d": 180,
+  "365d": 365,
+}
+
+// PostgREST caps a single response at 1000 rows, which a long range of food entries can exceed.
+const PAGE_SIZE = 1000
+
+async function fetchAllRows<T>(
+  fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: Error | null }>,
+): Promise<T[]> {
+  const rows: T[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    rows.push(...(data ?? []))
+    if (!data || data.length < PAGE_SIZE) return rows
+  }
+}
 
 function rangeToDate(range: StatsRange): string {
   const d = new Date()
-  const days = { "7d": 7, "14d": 14, "30d": 30, "90d": 90 }[range]
+  const days = RANGE_DAYS[range]
   d.setDate(d.getDate() - days + 1)
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, "0")
@@ -35,7 +59,7 @@ function rangeToDate(range: StatsRange): string {
   return `${y}-${m}-${dd}`
 }
 
-function formatLocalDate(d: Date): string {
+export function formatLocalDate(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, "0")
   const dd = String(d.getDate()).padStart(2, "0")
@@ -46,20 +70,23 @@ export function useDailySummaries(userId: string | undefined, range: StatsRange)
   const startDate = rangeToDate(range)
 
   return useQuery({
-    queryKey: ["fuelup-daily-summaries", userId, range],
+    queryKey: ["fuelup-daily-summaries", userId, range, startDate],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("food_entries")
-        .select("entry_date, fat_g, carbs_g, protein_g")
-        .eq("user_id", userId!)
-        .gte("entry_date", startDate)
-        .order("entry_date", { ascending: true })
-
-      if (error) throw error
+      const data = await fetchAllRows<{ entry_date: string; fat_g: number; carbs_g: number; protein_g: number }>(
+        (from, to) =>
+          supabase
+            .from("food_entries")
+            .select("entry_date, fat_g, carbs_g, protein_g")
+            .eq("user_id", userId!)
+            .gte("entry_date", startDate)
+            .order("entry_date", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+      )
 
       const byDate = new Map<string, DailySummary>()
 
-      const days = { "7d": 7, "14d": 14, "30d": 30, "90d": 90 }[range]
+      const days = RANGE_DAYS[range]
       for (let i = 0; i < days; i++) {
         const d = new Date()
         d.setDate(d.getDate() - days + 1 + i)
@@ -74,7 +101,7 @@ export function useDailySummaries(userId: string | undefined, range: StatsRange)
         })
       }
 
-      for (const row of data ?? []) {
+      for (const row of data) {
         const existing = byDate.get(row.entry_date)
         const fat = Number(row.fat_g)
         const carbs = Number(row.carbs_g)
@@ -100,7 +127,7 @@ export function useWeightRange(userId: string | undefined, range: StatsRange) {
   const startDate = rangeToDate(range)
 
   return useQuery({
-    queryKey: ["fuelup-weight-range", userId, range],
+    queryKey: ["fuelup-weight-range", userId, range, startDate],
     queryFn: async () => {
       const [rangeResult, seedResult] = await Promise.all([
         supabase
@@ -132,7 +159,7 @@ export function useWeightRange(userId: string | undefined, range: StatsRange) {
 
       if (entryMap.size === 0) return [] as WeightPoint[]
 
-      const days = { "7d": 7, "14d": 14, "30d": 30, "90d": 90 }[range]
+      const days = RANGE_DAYS[range]
       const today = formatLocalDate(new Date())
       const filled: WeightPoint[] = []
       let carry: number | null = seedResult.data ? Number(seedResult.data.weight_lbs) : null
@@ -160,18 +187,21 @@ export function useTopFoods(userId: string | undefined, range: StatsRange) {
   const startDate = rangeToDate(range)
 
   return useQuery({
-    queryKey: ["fuelup-top-foods", userId, range],
+    queryKey: ["fuelup-top-foods", userId, range, startDate],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("food_entries")
-        .select("label, fat_g, carbs_g, protein_g")
-        .eq("user_id", userId!)
-        .gte("entry_date", startDate)
-
-      if (error) throw error
+      const data = await fetchAllRows<{ label: string; fat_g: number; carbs_g: number; protein_g: number }>(
+        (from, to) =>
+          supabase
+            .from("food_entries")
+            .select("label, fat_g, carbs_g, protein_g")
+            .eq("user_id", userId!)
+            .gte("entry_date", startDate)
+            .order("id", { ascending: true })
+            .range(from, to),
+      )
 
       const grouped = new Map<string, { count: number; totalCal: number }>()
-      for (const row of data ?? []) {
+      for (const row of data) {
         const key = row.label.trim().toLowerCase()
         const cal = Number(row.fat_g) * 9 + Number(row.carbs_g) * 4 + Number(row.protein_g) * 4
         const existing = grouped.get(key) ?? { count: 0, totalCal: 0 }
@@ -181,7 +211,7 @@ export function useTopFoods(userId: string | undefined, range: StatsRange) {
       }
 
       const labelMap = new Map<string, string>()
-      for (const row of data ?? []) {
+      for (const row of data) {
         const key = row.label.trim().toLowerCase()
         if (!labelMap.has(key)) labelMap.set(key, row.label.trim())
       }

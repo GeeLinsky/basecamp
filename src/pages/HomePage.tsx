@@ -18,6 +18,8 @@ import {
   Loader2,
   User,
   Flame,
+  HeartPulse,
+  Moon,
   Blocks,
   Settings,
   Users,
@@ -305,6 +307,18 @@ function AuthPopover() {
                 <Link to="/dashboard/fuelup">
                   <Flame className="h-4 w-4 mr-2" />
                   FuelUp
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/zoneout">
+                  <HeartPulse className="h-4 w-4 mr-2" />
+                  ZoneOut
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/lightsout">
+                  <Moon className="h-4 w-4 mr-2" />
+                  LightsOut
                 </Link>
               </Button>
               {isAdmin && (

@@ -10,6 +10,8 @@ import DashboardLayout from "./layout/DashboardLayout"
 import SettingsPage from "./pages/dashboard/SettingsPage"
 import FuelUpPage from "./pages/dashboard/FuelUpPage"
 import FuelUpStatsPage from "./pages/dashboard/FuelUpStatsPage"
+import ZoneOutPage from "./pages/dashboard/ZoneOutPage"
+import LightsOutPage from "./pages/dashboard/LightsOutPage"
 import UsersPage from "./pages/dashboard/UsersPage"
 import AuthCallbackPage from "./pages/AuthCallbackPage"
 import { IS_DEV } from "@/utils/env"
@@ -50,6 +52,8 @@ const App = () => {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route path="fuelup" element={<FuelUpPage />} />
           <Route path="fuelup/stats" element={<FuelUpStatsPage />} />
+          <Route path="zoneout" element={<ZoneOutPage />} />
+          <Route path="lightsout" element={<LightsOutPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<UsersPage />} />
           <Route path="component-showcase" element={<ComponentsShowcasePage />} />

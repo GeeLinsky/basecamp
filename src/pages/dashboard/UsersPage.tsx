@@ -53,6 +53,7 @@ interface ProfileRow {
   food_entry_count: number
   food_favorite_count: number
   weight_entry_count: number
+  zoneout_session_count: number
 }
 
 function useUsers() {
@@ -362,6 +363,10 @@ function UserList() {
                       <Tooltip>
                         <TooltipTrigger className="cursor-default">{u.weight_entry_count} weights</TooltipTrigger>
                         <TooltipContent>Weight entries</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger className="cursor-default">{u.zoneout_session_count} zoneouts</TooltipTrigger>
+                        <TooltipContent>ZoneOut sessions</TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>

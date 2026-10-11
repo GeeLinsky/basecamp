@@ -2,3 +2,7 @@ node_modules
 dist
 .env
 .DS_Store
+
+# Garmin export output
+scripts/garmin/*.csv
+scripts/garmin/.venv/
