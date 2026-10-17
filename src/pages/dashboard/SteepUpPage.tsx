@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Helmet } from "react-helmet-async"
+import { parseAsString, useQueryState } from "nuqs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -32,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Search, Trash2 } from "lucide-react"
 import {
   climbRatio,
   useAddSteepupClimb,
@@ -169,7 +170,13 @@ export default function SteepUpPage() {
   })
 
   // The hook already sorts steepest first, so chart and table share the same order.
-  const chartData = useMemo(() => climbs.map(c => ({ name: c.name, ratio: climbRatio(c) })), [climbs])
+  const [query, setQuery] = useQueryState("q", parseAsString.withDefault(""))
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return q ? climbs.filter(c => c.name.toLowerCase().includes(q)) : climbs
+  }, [climbs, query])
+  const chartData = useMemo(() => filtered.map(c => ({ name: c.name, ratio: climbRatio(c) })), [filtered])
 
   if (!user) return null
 
@@ -268,104 +275,135 @@ export default function SteepUpPage() {
         </Card>
       ) : (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Steepness ratio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={chartConfig}
-                className="w-full aspect-auto"
-                style={{ height: chartData.length * ROW_HEIGHT + 40 }}
-              >
-                <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 12 }}>
-                  <CartesianGrid horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => formatRatio(v)} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={110}
-                    interval={0}
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v: string) => (v.length > 16 ? `${v.slice(0, 15)}…` : v)}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent formatter={value => formatRatio(Number(value))} />}
-                  />
-                  <Bar dataKey="ratio" fill="var(--color-ratio)" radius={[0, 3, 3, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search climbs"
+              aria-label="Search climbs"
+              autoComplete="off"
+              className="pl-9"
+              value={query}
+              onChange={e => setQuery(e.target.value || null)}
+            />
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">All climbs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="text-right">Vert (ft)</TableHead>
-                    <TableHead className="text-right">Miles</TableHead>
-                    <TableHead className="text-right">Ratio</TableHead>
-                    <TableHead className="w-24" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {climbs.map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {c.vertical_feet.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{c.miles}</TableCell>
-                      <TableCell className="text-right font-mono font-medium tabular-nums">
-                        {formatRatio(climbRatio(c))}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 cursor-pointer"
-                          aria-label="Edit climb"
-                          onClick={() => setEditing(c)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+          {filtered.length === 0 ? (
+            <Card>
+              <CardContent>
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>No matches</EmptyTitle>
+                    <EmptyDescription>No climbs match “{query.trim()}”.</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Steepness ratio</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer
+                    config={chartConfig}
+                    className="w-full aspect-auto"
+                    style={{ height: chartData.length * ROW_HEIGHT + 40 }}
+                  >
+                    <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 12 }}>
+                      <CartesianGrid horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => formatRatio(v)} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        width={110}
+                        interval={0}
+                        tick={{ fontSize: 11 }}
+                        tickFormatter={(v: string) => (v.length > 16 ? `${v.slice(0, 15)}…` : v)}
+                      />
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent formatter={value => formatRatio(Number(value))} />}
+                      />
+                      <Bar dataKey="ratio" fill="var(--color-ratio)" radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">All climbs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-right">Vert (ft)</TableHead>
+                        <TableHead className="text-right">Miles</TableHead>
+                        <TableHead className="text-right">Ratio</TableHead>
+                        <TableHead className="w-24" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map(c => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.name}</TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">
+                            {c.vertical_feet.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">{c.miles}</TableCell>
+                          <TableCell className="text-right font-mono font-medium tabular-nums">
+                            {formatRatio(climbRatio(c))}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive"
-                              aria-label="Delete climb"
+                              className="h-8 w-8 cursor-pointer"
+                              aria-label="Edit climb"
+                              onClick={() => setEditing(c)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this climb?</AlertDialogTitle>
-                              <AlertDialogDescription>{c.name} will be permanently removed.</AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
-                              <AlertDialogAction className="cursor-pointer" onClick={() => deleteClimb.mutate(c.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive"
+                                  aria-label="Delete climb"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete this climb?</AlertDialogTitle>
+                                  <AlertDialogDescription>{c.name} will be permanently removed.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="cursor-pointer"
+                                    onClick={() => deleteClimb.mutate(c.id)}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </>
       )}
       <EditClimbDialog climb={editing} userId={user.id} onClose={() => setEditing(null)} />
