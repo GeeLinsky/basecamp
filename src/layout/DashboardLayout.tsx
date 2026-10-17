@@ -18,7 +18,18 @@ import {
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Home, Flame, HeartPulse, Moon, Blocks, RotateCcw, SquareActivity, Users } from "lucide-react"
+import {
+  Home,
+  Flame,
+  HeartPulse,
+  Moon,
+  Blocks,
+  RotateCcw,
+  SquareActivity,
+  Users,
+  Mountain,
+  TrendingUp,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ColorToggle from "@/components/color/ColorToggle"
 import ThemeToggle from "@/components/theme/ThemeToggle"
@@ -31,6 +42,8 @@ import { IS_DEV } from "@/utils/env"
 
 const navItems = [
   { to: "/dashboard/fuelup", label: "FuelUp", icon: Flame },
+  { to: "/dashboard/peakout", label: "PeakOut", icon: TrendingUp },
+  { to: "/dashboard/steepup", label: "SteepUp", icon: Mountain },
   { to: "/dashboard/zoneout", label: "ZoneOut", icon: HeartPulse },
   { to: "/dashboard/lightsout", label: "LightsOut", icon: Moon },
   { to: "/dashboard/users", label: "Users", icon: Users, adminOnly: true },

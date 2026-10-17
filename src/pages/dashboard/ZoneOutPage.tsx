@@ -179,7 +179,7 @@ export default function ZoneOutPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)}>
-            <FieldGroup className="sm:flex-row sm:items-start">
+            <FieldGroup className="gap-4 sm:flex-row sm:items-start">
               <Field className="sm:flex-1" data-invalid={!!errors.session_date}>
                 <FieldLabel htmlFor="zo-date">Date</FieldLabel>
                 <Controller
@@ -194,7 +194,7 @@ export default function ZoneOutPage() {
                           variant="outline"
                           className="w-full cursor-pointer justify-start font-normal"
                         >
-                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          <CalendarIcon />
                           {formatTooltipDate(field.value)}
                         </Button>
                       </PopoverTrigger>
@@ -233,7 +233,7 @@ export default function ZoneOutPage() {
                   Log
                 </FieldLabel>
                 <Button type="submit" className="w-full cursor-pointer sm:w-auto" disabled={addSession.isPending}>
-                  {addSession.isPending ? <Spinner className="mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  {addSession.isPending ? <Spinner /> : <Plus />}
                   Log session
                 </Button>
               </Field>

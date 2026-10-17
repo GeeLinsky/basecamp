@@ -23,6 +23,7 @@ import {
   Blocks,
   Settings,
   Users,
+  TrendingUp,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -46,7 +47,6 @@ import { toast } from "sonner"
 const supabase = createClient()
 
 export default function DigitalCard() {
-
   return (
     <main className={clsx("flex items-center justify-center p-4", { "min-h-screen": isDesktop })}>
       <Helmet>
@@ -307,6 +307,18 @@ function AuthPopover() {
                 <Link to="/dashboard/fuelup">
                   <Flame className="h-4 w-4 mr-2" />
                   FuelUp
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/peakout">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  PeakOut
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
+                <Link to="/dashboard/steepup">
+                  <Mountain className="h-4 w-4 mr-2" />
+                  SteepUp
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>

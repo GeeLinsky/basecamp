@@ -54,6 +54,8 @@ interface ProfileRow {
   food_favorite_count: number
   weight_entry_count: number
   zoneout_session_count: number
+  steepup_climb_count: number
+  peakout_session_count: number
 }
 
 function useUsers() {
@@ -367,6 +369,14 @@ function UserList() {
                       <Tooltip>
                         <TooltipTrigger className="cursor-default">{u.zoneout_session_count} zoneouts</TooltipTrigger>
                         <TooltipContent>ZoneOut sessions</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger className="cursor-default">{u.steepup_climb_count} climbs</TooltipTrigger>
+                        <TooltipContent>SteepUp climbs</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger className="cursor-default">{u.peakout_session_count} peakouts</TooltipTrigger>
+                        <TooltipContent>PeakOut entries</TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>
