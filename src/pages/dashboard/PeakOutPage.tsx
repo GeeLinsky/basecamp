@@ -31,10 +31,13 @@ import { CalendarIcon, Plus, Trash2 } from "lucide-react"
 import { formatLocalDate } from "@/hooks/use-fuelup-stats"
 import {
   usePeakoutDaily,
+  usePeakoutPeriodTotals,
+  usePeakoutHistory,
   useRecentPeakoutSessions,
   useAddPeakoutSession,
   useDeletePeakoutSession,
   type PeakoutDay,
+  type PeakoutPeriod,
   type PeakoutRange,
 } from "@/hooks/use-peakout"
 
@@ -43,6 +46,14 @@ const RANGES: { value: PeakoutRange; label: string }[] = [
   { value: "3m", label: "3M" },
   { value: "6m", label: "6M" },
   { value: "1y", label: "1Y" },
+]
+
+type ChartView = "week" | "month" | "year"
+
+const VIEWS: { value: ChartView; label: string }[] = [
+  { value: "week", label: "Weekly" },
+  { value: "month", label: "Monthly" },
+  { value: "year", label: "Yearly" },
 ]
 
 const chartConfig = {
@@ -85,13 +96,57 @@ function bucketByWeek(days: PeakoutDay[]): PeakoutDay[] {
   return weeks
 }
 
+function PeriodChart({
+  title,
+  data,
+  tickFormatter,
+  tooltipLabel,
+}: {
+  title: string
+  data: PeakoutPeriod[]
+  tickFormatter: (date: string) => string
+  tooltipLabel: (date: string) => string
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={chartConfig} className="aspect-[2/1] w-full">
+          <BarChart data={data} margin={{ left: 0, right: 4 }}>
+            <CartesianGrid vertical={false} />
+            <XAxis dataKey="date" tickFormatter={tickFormatter} interval={0} tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={v => Number(v).toLocaleString()} />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(_, payload) => {
+                    const item = payload?.[0]?.payload
+                    return item ? tooltipLabel(item.date) : ""
+                  }}
+                  formatter={value => formatFeet(Number(value))}
+                />
+              }
+            />
+            <Bar dataKey="feet" fill="var(--color-feet)" radius={[3, 3, 0, 0]} />
+          </BarChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function PeakOutPage() {
   const { user } = useAuth()
   const [range, setRange] = useState<PeakoutRange>("4w")
+  const [view, setView] = useState<ChartView>("week")
   const [calendarOpen, setCalendarOpen] = useState(false)
   const userId = user?.id
 
   const { data: days = [], isLoading } = usePeakoutDaily(userId, range)
+  const { data: totals } = usePeakoutPeriodTotals(userId)
+  const { data: history } = usePeakoutHistory(userId)
   const { data: recent = [] } = useRecentPeakoutSessions(userId)
   const addSession = useAddPeakoutSession(userId ?? "")
   const deleteSession = useDeletePeakoutSession(userId ?? "")
@@ -140,14 +195,32 @@ export default function PeakOutPage() {
         <p className="text-muted-foreground text-sm mt-1">Track your vert.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardDescription>This week{thisWeek && ` · ${thisWeek.label}`}</CardDescription>
-          <CardTitle className="text-3xl font-bold tabular-nums">
-            {thisWeek ? formatFeet(thisWeek.feet) : "–"}
-          </CardTitle>
-        </CardHeader>
-      </Card>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card className="gap-1 py-3">
+          <CardHeader className="px-4 gap-0.5">
+            <CardDescription className="text-xs">This week{thisWeek && ` · ${thisWeek.label}`}</CardDescription>
+            <CardTitle className="text-xl font-bold tabular-nums">
+              {thisWeek ? formatFeet(thisWeek.feet) : "–"}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="gap-1 py-3">
+          <CardHeader className="px-4 gap-0.5">
+            <CardDescription className="text-xs">{new Date().toLocaleDateString("en-US", { month: "long" })} to date</CardDescription>
+            <CardTitle className="text-xl font-bold tabular-nums">
+              {totals ? formatFeet(totals.month) : "–"}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="gap-1 py-3">
+          <CardHeader className="px-4 gap-0.5">
+            <CardDescription className="text-xs">{new Date().getFullYear()} to date</CardDescription>
+            <CardTitle className="text-xl font-bold tabular-nums">
+              {totals ? formatFeet(totals.year) : "–"}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -220,25 +293,42 @@ export default function PeakOutPage() {
         </CardContent>
       </Card>
 
-      <ToggleGroup
-        type="single"
-        variant="outline"
-        size="sm"
-        value={range}
-        onValueChange={value => value && setRange(value as PeakoutRange)}
-      >
-        {RANGES.map(r => (
-          <ToggleGroupItem key={r.value} value={r.value} className="cursor-pointer">
-            {r.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+      <div className="flex flex-wrap items-center gap-3">
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          value={view}
+          onValueChange={value => value && setView(value as ChartView)}
+        >
+          {VIEWS.map(v => (
+            <ToggleGroupItem key={v.value} value={v.value} className="cursor-pointer">
+              {v.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        {view === "week" && (
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={range}
+            onValueChange={value => value && setRange(value as PeakoutRange)}
+          >
+            {RANGES.map(r => (
+              <ToggleGroupItem key={r.value} value={r.value} className="cursor-pointer">
+                {r.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        )}
+      </div>
 
-      {isLoading ? (
+      {(view === "week" ? isLoading : !history) ? (
         <div className="flex justify-center py-16">
           <Spinner className="size-6 text-muted-foreground" />
         </div>
-      ) : (
+      ) : view === "week" ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">Vert per week</CardTitle>
@@ -266,6 +356,20 @@ export default function PeakOutPage() {
             </ChartContainer>
           </CardContent>
         </Card>
+      ) : view === "month" ? (
+        <PeriodChart
+          title="Vert per month"
+          data={history!.months}
+          tickFormatter={d => parseLocalDate(d).toLocaleDateString("en-US", { month: "short" })}
+          tooltipLabel={d => parseLocalDate(d).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+        />
+      ) : (
+        <PeriodChart
+          title="Vert per year"
+          data={history!.years}
+          tickFormatter={d => d.slice(0, 4)}
+          tooltipLabel={d => d.slice(0, 4)}
+        />
       )}
 
       <Card>
