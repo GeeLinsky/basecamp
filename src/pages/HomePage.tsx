@@ -18,12 +18,11 @@ import {
   Loader2,
   User,
   Flame,
-  HeartPulse,
+  Timer,
   Moon,
   Blocks,
   Settings,
   Users,
-  TrendingUp,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -40,6 +39,7 @@ import ColorToggle from "@/components/color/ColorToggle"
 import { isDesktop } from "react-device-detect"
 import { useAuth } from "@/context/AuthContext"
 import { UserAvatar } from "@/components/UserAvatar"
+import headshot from "@/assets/images/garrett-headshot.jpeg"
 import { useUserDisplay } from "@/hooks/use-user-display"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -81,7 +81,7 @@ export default function DigitalCard() {
           {/* Centered Avatar */}
           <div className="flex justify-center mb-6">
             <img
-              src="https://statix.geelinsky.com/images/garrett-headshot.jpeg"
+              src={headshot}
               alt="Garrett Polinsky"
               width={120}
               height={120}
@@ -163,11 +163,7 @@ export default function DigitalCard() {
           {/* PDF Resume */}
           <div className="flex justify-center">
             <Button variant="outline" size="sm" asChild>
-              <a
-                href="https://statix.geelinsky.com/files/Garrett%20Polinsky's%20Resume.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <a href="/files/Garrett%20Polinsky's%20Resume.pdf" target="_blank" rel="noopener noreferrer">
                 <Download className="h-4 w-4" />
                 PDF Resume
               </a>
@@ -192,32 +188,6 @@ export default function DigitalCard() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>LinkedIn</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href="https://www.strava.com/athletes/gee-linsky"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 384 512"
-                        fill="currentColor"
-                        className="h-5 w-5"
-                      >
-                        <path d="M158.4 0L7 292h89.2l62.2-116.1L220.1 292h88.5zm150.2 292l-43.9 88.2-44.6-88.2h-67.6l112.2 220 111.5-220z" />
-                      </svg>
-                      <span className="sr-only">Strava</span>
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Strava</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -310,21 +280,9 @@ function AuthPopover() {
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
-                <Link to="/dashboard/peakout">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  PeakOut
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
-                <Link to="/dashboard/steepup">
-                  <Mountain className="h-4 w-4 mr-2" />
-                  SteepUp
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>
-                <Link to="/dashboard/zoneout">
-                  <HeartPulse className="h-4 w-4 mr-2" />
-                  ZoneOut
+                <Link to="/dashboard/timesup">
+                  <Timer className="h-4 w-4 mr-2" />
+                  TimesUp
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" className="w-full justify-start" asChild onClick={() => setOpen(false)}>

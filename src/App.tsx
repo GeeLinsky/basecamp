@@ -10,6 +10,7 @@ import DashboardLayout from "./layout/DashboardLayout"
 import SettingsPage from "./pages/dashboard/SettingsPage"
 import FuelUpPage from "./pages/dashboard/FuelUpPage"
 import FuelUpStatsPage from "./pages/dashboard/FuelUpStatsPage"
+import TimesUpPage from "./pages/dashboard/TimesUpPage"
 import ZoneOutPage from "./pages/dashboard/ZoneOutPage"
 import LightsOutPage from "./pages/dashboard/LightsOutPage"
 import PeakOutPage from "./pages/dashboard/PeakOutPage"
@@ -54,6 +55,7 @@ const App = () => {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route path="fuelup" element={<FuelUpPage />} />
           <Route path="fuelup/stats" element={<FuelUpStatsPage />} />
+          <Route path="timesup" element={<TimesUpPage />} />
           <Route path="zoneout" element={<ZoneOutPage />} />
           <Route path="lightsout" element={<LightsOutPage />} />
           <Route path="peakout" element={<PeakOutPage />} />

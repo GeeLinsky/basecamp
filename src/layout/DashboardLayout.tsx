@@ -7,6 +7,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -29,6 +30,8 @@ import {
   Users,
   Mountain,
   TrendingUp,
+  Timer,
+  type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import ColorToggle from "@/components/color/ColorToggle"
@@ -39,16 +42,22 @@ import { UserAvatar } from "@/components/UserAvatar"
 import { AccountMenuContent } from "@/components/AccountMenuContent"
 import { useAdmin } from "@/hooks/use-admin"
 import { IS_DEV } from "@/utils/env"
+import gKeyWhite from "@/assets/images/g-key-white.png"
+import gKeyBlack from "@/assets/images/g-key-black.png"
 
 const navItems = [
   { to: "/dashboard/fuelup", label: "FuelUp", icon: Flame },
-  { to: "/dashboard/peakout", label: "PeakOut", icon: TrendingUp },
-  { to: "/dashboard/steepup", label: "SteepUp", icon: Mountain },
-  { to: "/dashboard/zoneout", label: "ZoneOut", icon: HeartPulse },
+  { to: "/dashboard/timesup", label: "TimesUp", icon: Timer },
   { to: "/dashboard/lightsout", label: "LightsOut", icon: Moon },
   { to: "/dashboard/users", label: "Users", icon: Users, adminOnly: true },
   { to: "/dashboard/component-showcase", label: "Component Showcase", icon: Blocks },
   { to: "/", label: "Home", icon: Home },
+]
+
+const archivedNavItems = [
+  { to: "/dashboard/peakout", label: "PeakOut", icon: TrendingUp },
+  { to: "/dashboard/steepup", label: "SteepUp", icon: Mountain },
+  { to: "/dashboard/zoneout", label: "ZoneOut", icon: HeartPulse },
 ]
 
 function getSidebarDefault() {
@@ -65,9 +74,7 @@ const DashboardLayout = () => {
 
   if (!user) return <Navigate to="/" replace />
 
-  const logoUrl = isDark
-    ? "https://statix.geelinsky.com/images/g-key-white.png"
-    : "https://statix.geelinsky.com/images/g-key-black.png"
+  const logoUrl = isDark ? gKeyWhite : gKeyBlack
 
   return (
     <SidebarProvider defaultOpen={getSidebarDefault()}>
@@ -120,26 +127,33 @@ function SidebarNavContent() {
   const { isMobile, setOpenMobile } = useSidebar()
   const { isAdmin } = useAdmin()
 
+  const renderItem = ({ to, label, icon: Icon }: { to: string; label: string; icon: LucideIcon }) => (
+    <SidebarMenuItem key={to}>
+      <NavLink to={to} end onClick={() => isMobile && setOpenMobile(false)}>
+        {({ isActive }) => (
+          <SidebarMenuButton tooltip={label} isActive={isActive}>
+            <Icon />
+            <span>{label}</span>
+          </SidebarMenuButton>
+        )}
+      </NavLink>
+    </SidebarMenuItem>
+  )
+
   return (
     <SidebarContent>
       <SidebarGroup>
         <SidebarGroupContent>
           <SidebarMenu>
-            {navItems
-              .filter(({ adminOnly }) => !adminOnly || isAdmin)
-              .map(({ to, label, icon: Icon }) => (
-                <SidebarMenuItem key={to}>
-                  <NavLink to={to} end onClick={() => isMobile && setOpenMobile(false)}>
-                    {({ isActive }) => (
-                      <SidebarMenuButton tooltip={label} isActive={isActive}>
-                        <Icon />
-                        <span>{label}</span>
-                      </SidebarMenuButton>
-                    )}
-                  </NavLink>
-                </SidebarMenuItem>
-              ))}
+            {navItems.filter(({ adminOnly }) => !adminOnly || isAdmin).map(item => renderItem(item))}
           </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarGroup>
+        <SidebarGroupLabel>Archived Features</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>{archivedNavItems.map(item => renderItem(item))}</SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
     </SidebarContent>

@@ -185,6 +185,7 @@ import {
 } from "@/components/ui/drawer"
 import { NativeSelect, NativeSelectOption, NativeSelectOptGroup } from "@/components/ui/native-select"
 import { toast } from "sonner"
+import headshot from "@/assets/images/garrett-headshot.jpeg"
 
 function Users(props: any) {
   return (
@@ -1676,7 +1677,7 @@ const ComponentShowcase = () => {
                   <HoverCardContent className="w-80">
                     <div className="flex justify-between space-x-4">
                       <Avatar>
-                        <AvatarImage src="https://statix.geelinsky.com/images/garrett-headshot.jpeg" />
+                        <AvatarImage src={headshot} />
                         <AvatarFallback>GP</AvatarFallback>
                       </Avatar>
                       <div className="space-y-1">
