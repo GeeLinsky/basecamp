@@ -102,6 +102,10 @@ function useChime() {
   }, [])
 
   const schedule = useCallback((delaySeconds: number, soundId: string) => {
+    // iOS Safari mutes Web Audio when the ringer switch is on silent unless the page declares playback audio.
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+    if (session) session.type = "playback"
+
     ctxRef.current ??= new AudioContext()
     const ctx = ctxRef.current
     void ctx.resume()
